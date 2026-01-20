@@ -9,20 +9,24 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .sources import urlhaus, phishtank, dnsbl, virustotal, urlscan, safebrowsing, abuseipdb
+from .sources import alienvault_otx, ipqualityscore, threatfox
 
 ALL_SOURCES = {
     # Free sources (no API key required)
     'urlhaus': urlhaus.check,
     'phishtank': phishtank.check,
     'dnsbl': dnsbl.check,
+    'alienvault_otx': alienvault_otx.check,
+    'threatfox': threatfox.check,
     # API key required
     'virustotal': virustotal.check,
     'urlscan': urlscan.check,
     'safebrowsing': safebrowsing.check,
     'abuseipdb': abuseipdb.check,
+    'ipqualityscore': ipqualityscore.check,
 }
 
-FREE_SOURCES = ['urlhaus', 'phishtank', 'dnsbl']
+FREE_SOURCES = ['urlhaus', 'phishtank', 'dnsbl', 'alienvault_otx']
 
 THREAT_WEIGHTS = {
     'malware': 40,
@@ -73,6 +77,26 @@ def calculate_risk_score(results: dict) -> tuple[int, str]:
             
         elif source == 'urlscan' and data.get('malicious'):
             score += THREAT_WEIGHTS.get('suspicious', 25)
+            
+        elif source == 'alienvault_otx':
+            # OTX: pulses indicate threat intel reports
+            if data.get('has_pulses') and not data.get('is_whitelisted'):
+                pulse_count = data.get('pulse_count', 0)
+                if pulse_count >= 5:
+                    score += THREAT_WEIGHTS.get('malware', 30)
+                elif pulse_count >= 1:
+                    score += THREAT_WEIGHTS.get('suspicious', 15)
+                    
+        elif source == 'threatfox' and data.get('listed'):
+            score += THREAT_WEIGHTS.get('malware', 40)
+            
+        elif source == 'ipqualityscore':
+            if data.get('malware'):
+                score += THREAT_WEIGHTS.get('malware', 40)
+            elif data.get('phishing'):
+                score += THREAT_WEIGHTS.get('phishing', 35)
+            elif data.get('suspicious') or data.get('risk_score', 0) >= 75:
+                score += THREAT_WEIGHTS.get('suspicious', 20)
     
     score = min(score, 100)
     
@@ -121,6 +145,10 @@ def check_url_reputation(
         elif source == 'safebrowsing' and os.getenv('GOOGLE_SAFEBROWSING_API_KEY'):
             available_sources.append(source)
         elif source == 'abuseipdb' and os.getenv('ABUSEIPDB_API_KEY'):
+            available_sources.append(source)
+        elif source == 'ipqualityscore' and os.getenv('IPQUALITYSCORE_API_KEY'):
+            available_sources.append(source)
+        elif source == 'threatfox' and os.getenv('THREATFOX_API_KEY'):
             available_sources.append(source)
     
     results = {}

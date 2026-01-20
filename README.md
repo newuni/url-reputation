@@ -4,8 +4,8 @@ Multi-source URL/domain security analysis with aggregated risk scoring.
 
 ## Features
 
-- **7 reputation sources**: VirusTotal, URLScan.io, Google Safe Browsing, AbuseIPDB, URLhaus, PhishTank/OpenPhish, DNSBL
-- **Works without API keys**: Free sources (URLhaus, PhishTank, DNSBL) always available
+- **10 reputation sources**: VirusTotal, URLScan.io, Google Safe Browsing, AbuseIPDB, URLhaus, PhishTank/OpenPhish, DNSBL, AlienVault OTX, IPQualityScore, ThreatFox
+- **Works without API keys**: Free sources (URLhaus, OpenPhish, DNSBL, AlienVault OTX) always available
 - **Parallel checking**: Fast concurrent checks across all sources
 - **Aggregated risk score**: 0-100 score with verdict (CLEAN, LOW_RISK, MEDIUM_RISK, HIGH_RISK)
 
@@ -169,6 +169,9 @@ Set environment variables for premium sources:
 | URLScan.io | `URLSCAN_API_KEY` | 5000/day |
 | Google Safe Browsing | `GOOGLE_SAFEBROWSING_API_KEY` | 10k/day |
 | AbuseIPDB | `ABUSEIPDB_API_KEY` | 1000/day |
+| IPQualityScore | `IPQUALITYSCORE_API_KEY` | 5000/month |
+| ThreatFox | `THREATFOX_API_KEY` | Unlimited (free at auth.abuse.ch) |
+| AlienVault OTX | `OTX_API_KEY` | Optional (higher rate limits) |
 
 See `references/api_setup.md` for detailed instructions on obtaining API keys.
 
@@ -181,6 +184,7 @@ These sources work without any API key:
 | URLhaus | Malware URLs from abuse.ch | Every 5 minutes |
 | OpenPhish | Phishing URLs | Hourly |
 | DNSBL | Spamhaus DBL, SURBL, Spamhaus ZEN | Real-time DNS |
+| AlienVault OTX | Community threat intel, pulses | Real-time |
 
 ## Risk Scoring
 

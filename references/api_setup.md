@@ -94,12 +94,52 @@ export $(cat .env | xargs)
 
 Or use python-dotenv in Python scripts.
 
+## IPQualityScore
+
+**Free tier:** 5,000 requests/month
+
+1. Go to https://www.ipqualityscore.com/create-account
+2. Create a free account
+3. Go to Dashboard → API Key
+4. Copy your API key
+
+```bash
+export IPQUALITYSCORE_API_KEY="your-key-here"
+```
+
+## ThreatFox (abuse.ch)
+
+**Free tier:** Unlimited (requires registration)
+
+1. Go to https://auth.abuse.ch/
+2. Register for a free account
+3. Get your Auth-Key from the dashboard
+4. Use it for ThreatFox, MalwareBazaar, and other abuse.ch services
+
+```bash
+export THREATFOX_API_KEY="your-key-here"
+```
+
+## AlienVault OTX (Optional)
+
+**Free tier:** Works without key, but key gives higher rate limits
+
+1. Go to https://otx.alienvault.com/
+2. Create a free account
+3. Go to Settings → API Integration
+4. Copy your OTX API Key
+
+```bash
+export OTX_API_KEY="your-key-here"
+```
+
 ## Free Sources (No API Key Needed)
 
 These sources work without any API key:
 
 - **URLhaus** - Malware URL database by abuse.ch
-- **PhishTank** - Community phishing database
+- **OpenPhish** - Phishing URL feed
 - **DNSBL** - DNS-based blocklists (Spamhaus, SURBL)
+- **AlienVault OTX** - Community threat intel (key optional for higher limits)
 
 The skill will automatically use these sources even without any API keys configured.
