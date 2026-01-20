@@ -240,6 +240,23 @@ python3 -m unittest tests.test_checker
 pytest tests/ -v
 ```
 
+## Roadmap
+
+Upcoming features:
+
+- [ ] **Config file** - `.urlreputationrc` or `.env` for API keys and preferences
+- [ ] **Rich terminal output** - Colors and formatting with Rich library
+- [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
+- [ ] **Webhook notifications** - Alert to Slack/Discord/Telegram on HIGH_RISK
+- [ ] **Quiet mode** - `--quiet` / `--alert-above 50` for scripting
+- [ ] **HTML report** - Generate visual report with badges
+- [ ] **Whois lookup** - Domain age, registrant info
+- [ ] **SSL certificate check** - Validity, expiration, issuer
+- [ ] **API server mode** - `--serve` for local REST API
+- [ ] **GitHub Action** - Scan URLs in PRs/commits
+
+Contributions welcome! 🐙
+
 ## License
 
 MIT
