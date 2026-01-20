@@ -152,6 +152,45 @@ url-reputation --file urls.txt --workers 10
 url-reputation "https://example.com" --sources urlhaus,dnsbl
 ```
 
+### Webhook notifications
+
+```bash
+# Send webhook on MEDIUM_RISK or HIGH_RISK (default)
+url-reputation "https://suspicious.com" --webhook https://your-server.com/hook
+
+# With HMAC secret for verification
+url-reputation "https://suspicious.com" \
+  --webhook https://your-server.com/hook \
+  --webhook-secret "your-secret-key"
+
+# Notify only on HIGH_RISK
+url-reputation "https://suspicious.com" --webhook https://... --notify-on high
+
+# Or via environment variables
+export WEBHOOK_URL="https://your-server.com/hook"
+export WEBHOOK_SECRET="your-secret-key"
+url-reputation "https://suspicious.com"
+```
+
+**Webhook payload:**
+```json
+{
+  "event": "url.risk_detected",
+  "timestamp": 1737410000,
+  "data": {
+    "url": "https://suspicious.com",
+    "domain": "suspicious.com",
+    "risk_score": 75,
+    "verdict": "MEDIUM_RISK",
+    "sources": { ... }
+  }
+}
+```
+
+**Security headers:**
+- `X-Timestamp`: Unix timestamp
+- `X-Signature-256`: `sha256=HMAC(secret, timestamp.payload)`
+
 ### With API keys for premium sources
 
 ```bash
@@ -262,7 +301,7 @@ Upcoming features:
 - [x] **Config file** - `.env` support for API keys ✅
 - [ ] **Rich terminal output** - Colors and formatting with Rich library
 - [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
-- [ ] **Webhook notifications** - Alert to Slack/Discord/Telegram on HIGH_RISK
+- [x] **Webhook notifications** - HMAC-signed webhooks on risk detection ✅
 - [ ] **Quiet mode** - `--quiet` / `--alert-above 50` for scripting
 - [ ] **HTML report** - Generate visual report with badges
 - [ ] **Whois lookup** - Domain age, registrant info

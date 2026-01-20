@@ -5,10 +5,12 @@ URL Reputation Checker - CLI entry point
 
 import argparse
 import json
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .checker import check_url_reputation
+from .webhook import notify_on_risk
 
 
 def main():
@@ -47,6 +49,22 @@ def main():
         default=5,
         help='Max parallel workers for batch processing (default: 5)'
     )
+    parser.add_argument(
+        '--webhook',
+        help='Webhook URL for notifications (or set WEBHOOK_URL env var)',
+        default=None
+    )
+    parser.add_argument(
+        '--webhook-secret',
+        help='Webhook HMAC secret (or set WEBHOOK_SECRET env var)',
+        default=None
+    )
+    parser.add_argument(
+        '--notify-on',
+        help='Risk level to notify on: all, high, medium (default: medium)',
+        choices=['all', 'high', 'medium'],
+        default='medium'
+    )
     
     args = parser.parse_args()
     
@@ -77,6 +95,9 @@ def main():
             print(json.dumps(result, indent=2))
         else:
             print_human_readable(result)
+        
+        # Send webhook notification if configured
+        _maybe_send_webhook(result, args)
 
 
 def check_urls_from_file(
@@ -135,6 +156,35 @@ def check_urls_from_file(
     results.sort(key=lambda r: url_order.get(r['url'], 999))
     
     return results
+
+
+def _maybe_send_webhook(result: dict, args):
+    """Send webhook notification if configured and criteria met."""
+    webhook_url = args.webhook or os.getenv('WEBHOOK_URL')
+    if not webhook_url:
+        return
+    
+    # Determine notification criteria
+    notify_levels = {
+        'all': (['CLEAN', 'LOW_RISK', 'MEDIUM_RISK', 'HIGH_RISK'], 0),
+        'medium': (['MEDIUM_RISK', 'HIGH_RISK'], 50),
+        'high': (['HIGH_RISK'], 76),
+    }
+    verdicts, min_score = notify_levels.get(args.notify_on, notify_levels['medium'])
+    
+    response = notify_on_risk(
+        result,
+        webhook_url=webhook_url,
+        webhook_secret=args.webhook_secret,
+        min_risk_score=min_score,
+        verdicts=verdicts
+    )
+    
+    if response:
+        if response.get('success'):
+            print(f"\n📤 Webhook sent: {response.get('status_code')}")
+        else:
+            print(f"\n⚠️ Webhook failed: {response.get('error')}")
 
 
 def print_batch_results(results: list):
