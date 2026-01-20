@@ -4,10 +4,14 @@ __pycache__/
 *$py.class
 *.so
 .Python
-.env
 .venv/
 venv/
 ENV/
+
+# Environment (keep .env.example, ignore actual .env)
+.env
+.env.local
+.env.*.local
 
 # IDE
 .idea/

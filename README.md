@@ -173,6 +173,21 @@ Set environment variables for premium sources:
 | ThreatFox | `THREATFOX_API_KEY` | Unlimited | [auth.abuse.ch](https://auth.abuse.ch/) |
 | AlienVault OTX | `OTX_API_KEY` | Optional | [otx.alienvault.com](https://otx.alienvault.com/) |
 
+### Using .env file (recommended)
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your keys
+nano .env
+```
+
+The tool automatically loads `.env` from:
+1. Current directory
+2. Home directory (`~/.env`)
+3. `~/.urlreputation.env`
+
 See `references/api_setup.md` for detailed instructions on obtaining API keys.
 
 ## Free Sources (No API Key Needed)
@@ -244,7 +259,7 @@ pytest tests/ -v
 
 Upcoming features:
 
-- [ ] **Config file** - `.urlreputationrc` or `.env` for API keys and preferences
+- [x] **Config file** - `.env` support for API keys ✅
 - [ ] **Rich terminal output** - Colors and formatting with Rich library
 - [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
 - [ ] **Webhook notifications** - Alert to Slack/Discord/Telegram on HIGH_RISK

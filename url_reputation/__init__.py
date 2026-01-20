@@ -2,5 +2,5 @@
 
 from .checker import check_url_reputation, check_urls_batch
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __all__ = ["check_url_reputation", "check_urls_batch"]

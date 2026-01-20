@@ -7,6 +7,18 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+# Load .env file if present
+try:
+    from dotenv import load_dotenv
+    # Try current dir, then home dir
+    for env_path in [Path('.env'), Path.home() / '.env', Path.home() / '.urlreputation.env']:
+        if env_path.exists():
+            load_dotenv(env_path)
+            break
+except ImportError:
+    pass  # dotenv not installed, rely on environment variables
 
 from .sources import urlhaus, phishtank, dnsbl, virustotal, urlscan, safebrowsing, abuseipdb
 from .sources import alienvault_otx, ipqualityscore, threatfox

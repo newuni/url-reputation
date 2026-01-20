@@ -1,10 +1,13 @@
 [project]
 name = "url-reputation"
-version = "1.1.0"
+version = "1.2.0"
 description = "Multi-source URL/domain security reputation checker"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
+dependencies = [
+    "python-dotenv>=1.0.0",
+]
 authors = [
     {name = "newuni"}
 ]
