@@ -148,3 +148,51 @@ def check_url_reputation(
         'checked_at': datetime.now(timezone.utc).isoformat(),
         'sources': results,
     }
+
+
+def check_urls_batch(
+    urls: list[str],
+    sources: Optional[list[str]] = None,
+    timeout: int = 30,
+    max_workers: int = 5
+) -> list[dict]:
+    """
+    Check multiple URLs in parallel.
+    
+    Args:
+        urls: List of URLs to check
+        sources: List of sources to use (default: all available)
+        timeout: Timeout in seconds for each source
+        max_workers: Maximum parallel workers
+        
+    Returns:
+        List of results for each URL (in original order)
+    """
+    if not urls:
+        return []
+    
+    results = []
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_url = {
+            executor.submit(check_url_reputation, url, sources, timeout): url
+            for url in urls
+        }
+        
+        for future in as_completed(future_to_url):
+            url = future_to_url[future]
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                results.append({
+                    'url': url,
+                    'error': str(e),
+                    'verdict': 'ERROR'
+                })
+    
+    # Sort by original order
+    url_order = {url: i for i, url in enumerate(urls)}
+    results.sort(key=lambda r: url_order.get(r['url'], 999))
+    
+    return results

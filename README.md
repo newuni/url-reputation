@@ -107,6 +107,45 @@ $ url-reputation "https://google.com" --json
 }
 ```
 
+### Batch processing from file
+
+```bash
+# Create a file with URLs (one per line)
+cat > urls.txt << EOF
+# Comments are ignored
+https://google.com
+https://wikipedia.org
+https://github.com
+EOF
+
+# Check all URLs
+url-reputation --file urls.txt
+
+# Output:
+🔍 URL Reputation Batch Report
+============================================================
+Total URLs: 3
+
+📊 Summary:
+  ✅ CLEAN: 2
+  ⚠️ LOW_RISK: 1
+
+============================================================
+📋 Results:
+------------------------------------------------------------
+  ✅ [  0/100] CLEAN        https://google.com
+  ✅ [  0/100] CLEAN        https://wikipedia.org
+  ⚠️ [ 40/100] LOW_RISK     https://github.com
+```
+
+```bash
+# JSON output for batch
+url-reputation --file urls.txt --json
+
+# Control parallelism
+url-reputation --file urls.txt --workers 10
+```
+
 ### Check specific sources only
 
 ```bash
@@ -155,10 +194,22 @@ These sources work without any API key:
 ## Python API
 
 ```python
-from url_reputation import check_url_reputation
+from url_reputation import check_url_reputation, check_urls_batch
 
+# Single URL
 result = check_url_reputation("https://example.com")
 print(f"Verdict: {result['verdict']} ({result['risk_score']}/100)")
+
+# Batch processing
+urls = [
+    "https://google.com",
+    "https://wikipedia.org",
+    "https://suspicious-site.com"
+]
+results = check_urls_batch(urls, max_workers=5)
+
+for r in results:
+    print(f"{r['verdict']}: {r['url']}")
 
 # With specific sources
 result = check_url_reputation(
