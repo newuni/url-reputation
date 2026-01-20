@@ -152,6 +152,40 @@ url-reputation --file urls.txt --workers 10
 url-reputation "https://example.com" --sources urlhaus,dnsbl
 ```
 
+### DNS & Whois enrichment
+
+```bash
+# Add DNS records and Whois info
+url-reputation "https://example.com" --enrich dns,whois
+
+# DNS only
+url-reputation "https://example.com" --enrich dns
+
+# Output includes:
+📋 Enrichment Data:
+--------------------------------------------------
+
+🌐 DNS Records:
+  A:     93.184.216.34
+  MX:    mail.example.com
+  NS:    ns1.example.com, ns2.example.com
+  SPF:   ✅  DMARC: ✅
+
+📝 Whois:
+  Created:   2001-01-01 (8500 days)
+  Registrar: GoDaddy
+  Country:   US
+
+⚠️ Risk Indicators:
+  • No SPF record
+```
+
+**Install enrichment dependencies:**
+```bash
+pip install url-reputation[full]
+# Or manually: pip install dnspython python-whois
+```
+
 ### Webhook notifications
 
 ```bash
@@ -446,6 +480,7 @@ Upcoming features:
 - [ ] **Rich terminal output** - Colors and formatting with Rich library
 - [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
 - [x] **Webhook notifications** - HMAC-signed webhooks on risk detection ✅
+- [x] **DNS/Whois lookup** - `--enrich dns,whois` for domain intel ✅
 - [ ] **Quiet mode** - `--quiet` / `--alert-above 50` for scripting
 - [ ] **HTML report** - Generate visual report with badges
 - [ ] **Whois lookup** - Domain age, registrant info

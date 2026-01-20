@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .checker import check_url_reputation
 from .webhook import notify_on_risk
+from .enrich import enrich
 
 
 def main():
@@ -65,6 +66,11 @@ def main():
         choices=['all', 'high', 'medium'],
         default='medium'
     )
+    parser.add_argument(
+        '--enrich',
+        help='Enrichment data to include: dns,whois (comma-separated)',
+        default=None
+    )
     
     args = parser.parse_args()
     
@@ -91,10 +97,17 @@ def main():
         # Single URL mode
         result = check_url_reputation(args.url, sources, args.timeout)
         
+        # Add enrichment if requested
+        if args.enrich:
+            enrich_types = [t.strip() for t in args.enrich.split(',')]
+            result['enrichment'] = enrich(result['domain'], enrich_types, args.timeout)
+        
         if args.json:
             print(json.dumps(result, indent=2))
         else:
             print_human_readable(result)
+            if args.enrich:
+                print_enrichment(result.get('enrichment', {}))
         
         # Send webhook notification if configured
         _maybe_send_webhook(result, args)
@@ -185,6 +198,58 @@ def _maybe_send_webhook(result: dict, args):
             print(f"\n📤 Webhook sent: {response.get('status_code')}")
         else:
             print(f"\n⚠️ Webhook failed: {response.get('error')}")
+
+
+def print_enrichment(enrichment: dict):
+    """Print enrichment data in human-readable format."""
+    if not enrichment:
+        return
+    
+    print(f"\n📋 Enrichment Data:")
+    print(f"{'-'*50}")
+    
+    # DNS
+    if 'dns' in enrichment:
+        dns = enrichment['dns']
+        print(f"\n🌐 DNS Records:")
+        if dns.get('a_records'):
+            print(f"  A:     {', '.join(dns['a_records'])}")
+        if dns.get('aaaa_records'):
+            print(f"  AAAA:  {', '.join(dns['aaaa_records'][:2])}...")
+        if dns.get('mx_records'):
+            mx = dns['mx_records']
+            if isinstance(mx[0], dict):
+                print(f"  MX:    {mx[0].get('host', mx[0])}")
+            else:
+                print(f"  MX:    {mx[0]}")
+        if dns.get('ns_records'):
+            print(f"  NS:    {', '.join(dns['ns_records'][:2])}")
+        
+        # Security
+        spf = '✅' if dns.get('has_spf') else '❌'
+        dmarc = '✅' if dns.get('has_dmarc') else '❌'
+        print(f"  SPF:   {spf}  DMARC: {dmarc}")
+    
+    # Whois
+    if 'whois' in enrichment:
+        whois = enrichment['whois']
+        print(f"\n📝 Whois:")
+        if whois.get('creation_date'):
+            age = whois.get('domain_age_days', '?')
+            new_badge = ' ⚠️ NEW!' if whois.get('is_new_domain') else ''
+            print(f"  Created:   {whois['creation_date'][:10]} ({age} days){new_badge}")
+        if whois.get('registrar'):
+            print(f"  Registrar: {whois['registrar'][:40]}")
+        if whois.get('registrant_country'):
+            print(f"  Country:   {whois['registrant_country']}")
+        if whois.get('error'):
+            print(f"  ⚠️ {whois['error']}")
+    
+    # Risk indicators
+    if 'risk_indicators' in enrichment:
+        print(f"\n⚠️ Risk Indicators:")
+        for indicator in enrichment['risk_indicators']:
+            print(f"  • {indicator}")
 
 
 def print_batch_results(results: list):
