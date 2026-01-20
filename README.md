@@ -24,7 +24,21 @@ uvx --from git+https://github.com/newuni/url-reputation url-reputation "https://
 ### Using pip
 
 ```bash
+# From GitHub
 pip install git+https://github.com/newuni/url-reputation
+
+# From wheel (download from releases)
+pip install url_reputation-1.0.0-py3-none-any.whl
+```
+
+### Download wheel
+
+📦 [Download wheel from releases](https://github.com/newuni/url-reputation/releases/latest)
+
+```bash
+# Download and install
+curl -LO https://github.com/newuni/url-reputation/releases/download/v1.0.0/url_reputation-1.0.0-py3-none-any.whl
+pip install url_reputation-1.0.0-py3-none-any.whl
 url-reputation "https://example.com"
 ```
 
