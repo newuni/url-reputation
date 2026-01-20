@@ -172,6 +172,19 @@ result = check_url_reputation(
 
 Copy or symlink this folder to your Clawdbot skills directory to use it as an agent skill.
 
+## Running Tests
+
+```bash
+# Run all tests
+python3 -m unittest discover tests/
+
+# Run specific test file
+python3 -m unittest tests.test_checker
+
+# With pytest (if installed)
+pytest tests/ -v
+```
+
 ## License
 
 MIT
