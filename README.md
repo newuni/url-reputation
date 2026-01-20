@@ -191,6 +191,150 @@ url-reputation "https://suspicious.com"
 - `X-Timestamp`: Unix timestamp
 - `X-Signature-256`: `sha256=HMAC(secret, timestamp.payload)`
 
+### Webhook signature verification
+
+Verify the signature on your server to ensure the request is authentic.
+
+**Python:**
+```python
+import hmac, hashlib, time
+
+def verify_webhook(payload: bytes, signature: str, timestamp: str, secret: str) -> bool:
+    # Check timestamp (max 5 min old)
+    if abs(time.time() - int(timestamp)) > 300:
+        return False
+    
+    # Verify signature
+    message = f"{timestamp}.{payload.decode()}"
+    expected = "sha256=" + hmac.new(
+        secret.encode(), message.encode(), hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(signature, expected)
+
+# Flask example
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if not verify_webhook(
+        request.data,
+        request.headers.get('X-Signature-256', ''),
+        request.headers.get('X-Timestamp', ''),
+        'your-secret'
+    ):
+        return 'Unauthorized', 401
+    
+    data = request.json
+    # Process webhook...
+```
+
+**Node.js:**
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, timestamp, secret) {
+  // Check timestamp (max 5 min old)
+  if (Math.abs(Date.now() / 1000 - parseInt(timestamp)) > 300) {
+    return false;
+  }
+  
+  // Verify signature
+  const message = `${timestamp}.${payload}`;
+  const expected = 'sha256=' + crypto
+    .createHmac('sha256', secret)
+    .update(message)
+    .digest('hex');
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// Express example
+app.post('/webhook', (req, res) => {
+  const valid = verifyWebhook(
+    JSON.stringify(req.body),
+    req.headers['x-signature-256'],
+    req.headers['x-timestamp'],
+    'your-secret'
+  );
+  
+  if (!valid) return res.status(401).send('Unauthorized');
+  // Process webhook...
+});
+```
+
+**Go:**
+```go
+import (
+    "crypto/hmac"
+    "crypto/sha256"
+    "encoding/hex"
+    "fmt"
+    "math"
+    "strconv"
+    "time"
+)
+
+func verifyWebhook(payload, signature, timestamp, secret string) bool {
+    // Check timestamp
+    ts, _ := strconv.ParseInt(timestamp, 10, 64)
+    if math.Abs(float64(time.Now().Unix()-ts)) > 300 {
+        return false
+    }
+    
+    // Verify signature
+    message := fmt.Sprintf("%s.%s", timestamp, payload)
+    mac := hmac.New(sha256.New, []byte(secret))
+    mac.Write([]byte(message))
+    expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+    
+    return hmac.Equal([]byte(signature), []byte(expected))
+}
+```
+
+**PHP:**
+```php
+function verifyWebhook($payload, $signature, $timestamp, $secret) {
+    // Check timestamp (max 5 min old)
+    if (abs(time() - intval($timestamp)) > 300) {
+        return false;
+    }
+    
+    // Verify signature
+    $message = $timestamp . '.' . $payload;
+    $expected = 'sha256=' . hash_hmac('sha256', $message, $secret);
+    
+    return hash_equals($signature, $expected);
+}
+
+// Usage
+$payload = file_get_contents('php://input');
+$signature = $_SERVER['HTTP_X_SIGNATURE_256'] ?? '';
+$timestamp = $_SERVER['HTTP_X_TIMESTAMP'] ?? '';
+
+if (!verifyWebhook($payload, $signature, $timestamp, 'your-secret')) {
+    http_response_code(401);
+    exit('Unauthorized');
+}
+```
+
+**Ruby:**
+```ruby
+require 'openssl'
+
+def verify_webhook(payload, signature, timestamp, secret)
+  # Check timestamp (max 5 min old)
+  return false if (Time.now.to_i - timestamp.to_i).abs > 300
+  
+  # Verify signature
+  message = "#{timestamp}.#{payload}"
+  expected = "sha256=" + OpenSSL::HMAC.hexdigest('sha256', secret, message)
+  
+  Rack::Utils.secure_compare(signature, expected)
+end
+```
+
 ### With API keys for premium sources
 
 ```bash
