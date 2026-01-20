@@ -163,15 +163,15 @@ url-reputation "https://suspicious-site.com"
 
 Set environment variables for premium sources:
 
-| Source | Environment Variable | Free Tier |
-|--------|---------------------|-----------|
-| VirusTotal | `VIRUSTOTAL_API_KEY` | 4 req/min |
-| URLScan.io | `URLSCAN_API_KEY` | 5000/day |
-| Google Safe Browsing | `GOOGLE_SAFEBROWSING_API_KEY` | 10k/day |
-| AbuseIPDB | `ABUSEIPDB_API_KEY` | 1000/day |
-| IPQualityScore | `IPQUALITYSCORE_API_KEY` | 5000/month |
-| ThreatFox | `THREATFOX_API_KEY` | Unlimited (free at auth.abuse.ch) |
-| AlienVault OTX | `OTX_API_KEY` | Optional (higher rate limits) |
+| Source | Environment Variable | Free Tier | Get API Key |
+|--------|---------------------|-----------|-------------|
+| VirusTotal | `VIRUSTOTAL_API_KEY` | 4 req/min | [virustotal.com](https://www.virustotal.com/gui/join-us) |
+| URLScan.io | `URLSCAN_API_KEY` | 5000/day | [urlscan.io](https://urlscan.io/user/signup) |
+| Google Safe Browsing | `GOOGLE_SAFEBROWSING_API_KEY` | 10k/day | [console.cloud.google.com](https://console.cloud.google.com/apis/library/safebrowsing.googleapis.com) |
+| AbuseIPDB | `ABUSEIPDB_API_KEY` | 1000/day | [abuseipdb.com](https://www.abuseipdb.com/register) |
+| IPQualityScore | `IPQUALITYSCORE_API_KEY` | 5000/month | [ipqualityscore.com](https://www.ipqualityscore.com/create-account) |
+| ThreatFox | `THREATFOX_API_KEY` | Unlimited | [auth.abuse.ch](https://auth.abuse.ch/) |
+| AlienVault OTX | `OTX_API_KEY` | Optional | [otx.alienvault.com](https://otx.alienvault.com/) |
 
 See `references/api_setup.md` for detailed instructions on obtaining API keys.
 
@@ -179,12 +179,12 @@ See `references/api_setup.md` for detailed instructions on obtaining API keys.
 
 These sources work without any API key:
 
-| Source | Data | Update Frequency |
-|--------|------|------------------|
-| URLhaus | Malware URLs from abuse.ch | Every 5 minutes |
-| OpenPhish | Phishing URLs | Hourly |
-| DNSBL | Spamhaus DBL, SURBL, Spamhaus ZEN | Real-time DNS |
-| AlienVault OTX | Community threat intel, pulses | Real-time |
+| Source | Data | Update Frequency | Website |
+|--------|------|------------------|---------|
+| URLhaus | Malware URLs | Every 5 min | [urlhaus.abuse.ch](https://urlhaus.abuse.ch/) |
+| OpenPhish | Phishing URLs | Hourly | [openphish.com](https://openphish.com/) |
+| DNSBL | Spam/malware domains | Real-time | [spamhaus.org](https://www.spamhaus.org/) / [surbl.org](https://surbl.org/) |
+| AlienVault OTX | Threat intel, pulses | Real-time | [otx.alienvault.com](https://otx.alienvault.com/) |
 
 ## Risk Scoring
 
