@@ -50,6 +50,79 @@ cd url-reputation
 python3 scripts/check_url.py "https://example.com"
 ```
 
+## 🐳 Docker Deployment
+
+Run the web UI with Docker for a visual interface accessible from any browser.
+
+### Quick Start
+
+```bash
+git clone https://github.com/newuni/url-reputation
+cd url-reputation
+docker compose up -d
+```
+
+The web UI will be available at **http://localhost:8095**
+
+### Custom Port
+
+Edit `docker-compose.yml` to change the port:
+
+```yaml
+ports:
+  - "8080:8000"  # Change 8095 to your preferred port
+```
+
+### With API Keys
+
+Create a `.env` file or set environment variables in `docker-compose.yml`:
+
+```yaml
+environment:
+  - VIRUSTOTAL_API_KEY=your-key-here
+  - URLSCAN_API_KEY=your-key-here
+```
+
+### REST API Endpoints
+
+The Docker container exposes a REST API:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/check` | POST | Check single URL |
+| `/api/batch` | POST | Check multiple URLs |
+| `/api/sources` | GET | List available sources |
+
+**Example: Check a URL**
+```bash
+curl -X POST http://localhost:8095/api/check \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "enrich": ["dns", "whois"]}'
+```
+
+**Example: Batch check**
+```bash
+curl -X POST http://localhost:8095/api/batch \
+  -H "Content-Type: application/json" \
+  -d '{"urls": ["https://google.com", "https://github.com"]}'
+```
+
+**Response format:**
+```json
+{
+  "url": "https://example.com",
+  "domain": "example.com",
+  "risk_score": 0,
+  "verdict": "CLEAN",
+  "sources": { ... },
+  "enrichment": {
+    "dns": { "a_record": "93.184.216.34", ... },
+    "whois": { "registrar": "...", ... }
+  }
+}
+```
+
 ## Usage Examples
 
 ### Check a clean URL
@@ -474,18 +547,20 @@ pytest tests/ -v
 
 ## Roadmap
 
-Upcoming features:
+### ✅ Completed
 
-- [x] **Config file** - `.env` support for API keys ✅
+- [x] **Config file** - `.env` support for API keys
+- [x] **Webhook notifications** - HMAC-signed webhooks on risk detection
+- [x] **DNS/Whois lookup** - `--enrich dns,whois` for domain intel
+- [x] **Docker web UI** - REST API + visual frontend with Docker Compose
+
+### 🚧 Planned
+
 - [ ] **Rich terminal output** - Colors and formatting with Rich library
 - [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
-- [x] **Webhook notifications** - HMAC-signed webhooks on risk detection ✅
-- [x] **DNS/Whois lookup** - `--enrich dns,whois` for domain intel ✅
 - [ ] **Quiet mode** - `--quiet` / `--alert-above 50` for scripting
 - [ ] **HTML report** - Generate visual report with badges
-- [ ] **Whois lookup** - Domain age, registrant info
 - [ ] **SSL certificate check** - Validity, expiration, issuer
-- [ ] **API server mode** - `--serve` for local REST API
 - [ ] **GitHub Action** - Scan URLs in PRs/commits
 
 Contributions welcome! 🐙
