@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  url-reputation:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: url-reputation-web
+    ports:
+      - "8095:8000"
+    environment:
+      # Free sources work without keys
+      # Uncomment and set for premium sources:
+      # - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY}
+      # - URLSCAN_API_KEY=${URLSCAN_API_KEY}
+      # - GOOGLE_SAFEBROWSING_API_KEY=${GOOGLE_SAFEBROWSING_API_KEY}
+      # - ABUSEIPDB_API_KEY=${ABUSEIPDB_API_KEY}
+      # - IPQUALITYSCORE_API_KEY=${IPQUALITYSCORE_API_KEY}
+      # - THREATFOX_API_KEY=${THREATFOX_API_KEY}
+      # - OTX_API_KEY=${OTX_API_KEY}
+      - TZ=Europe/Madrid
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

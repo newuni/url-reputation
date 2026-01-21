@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Reputation Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl" x-data="urlChecker()">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">🔍 URL Reputation Checker</h1>
+            <p class="text-gray-400">Multi-source security analysis for URLs and domains</p>
+        </header>
+
+        <!-- Input Form -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-lg">
+            <form @submit.prevent="checkUrl" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Enter URL to check</label>
+                    <div class="flex gap-2">
+                        <input 
+                            type="text" 
+                            x-model="url"
+                            placeholder="https://example.com"
+                            class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            :disabled="loading"
+                        >
+                        <button 
+                            type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
+                            :disabled="loading || !url"
+                        >
+                            <span x-show="!loading">Check</span>
+                            <span x-show="loading" class="flex items-center gap-2">
+                                <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Checking...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div class="flex flex-wrap gap-4 text-sm">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="options.enrichDns" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                        <span class="text-gray-300">DNS lookup</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="options.enrichWhois" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                        <span class="text-gray-300">WHOIS lookup</span>
+                    </label>
+                </div>
+            </form>
+        </div>
+
+        <!-- Error -->
+        <div x-show="error" x-cloak class="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6">
+            <p class="text-red-300" x-text="error"></p>
+        </div>
+
+        <!-- Results -->
+        <div x-show="result" x-cloak class="space-y-6">
+            <!-- Verdict Card -->
+            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white" x-text="result?.url"></h2>
+                        <p class="text-gray-400 text-sm" x-text="'Domain: ' + result?.domain"></p>
+                    </div>
+                    <div class="text-right">
+                        <div 
+                            class="text-3xl font-bold"
+                            :class="getVerdictColor(result?.verdict)"
+                            x-text="result?.verdict?.replace('_', ' ')"
+                        ></div>
+                        <div class="text-gray-400">
+                            Score: <span class="font-mono" x-text="result?.risk_score"></span>/100
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Bar -->
+                <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                        class="h-full transition-all duration-500"
+                        :class="getBarColor(result?.risk_score)"
+                        :style="'width: ' + (result?.risk_score || 0) + '%'"
+                    ></div>
+                </div>
+            </div>
+
+            <!-- Sources -->
+            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-white mb-4">📋 Source Results</h3>
+                <div class="grid gap-3">
+                    <template x-for="(data, source) in result?.sources" :key="source">
+                        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg px-4 py-3">
+                            <span class="font-medium text-gray-200" x-text="source"></span>
+                            <span 
+                                class="px-3 py-1 rounded-full text-sm font-medium"
+                                :class="data.listed ? 'bg-red-900/50 text-red-300' : 'bg-green-900/50 text-green-300'"
+                                x-text="data.listed ? '⚠️ Listed' : '✅ Clean'"
+                            ></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Enrichment Data -->
+            <div x-show="result?.enrichment" class="bg-gray-800 rounded-lg p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-white mb-4">🔎 Enrichment Data</h3>
+                
+                <!-- DNS -->
+                <div x-show="result?.enrichment?.dns" class="mb-4">
+                    <h4 class="text-md font-medium text-gray-300 mb-2">🌐 DNS Records</h4>
+                    <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
+                        <template x-for="(value, key) in result?.enrichment?.dns" :key="key">
+                            <div class="grid grid-cols-[140px_1fr] gap-2" x-show="value && (Array.isArray(value) ? value.length > 0 : true)">
+                                <span class="text-blue-400 truncate" x-text="key + ':'"></span>
+                                <span class="text-gray-300 break-all" x-text="Array.isArray(value) ? value.join(', ') : value"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- WHOIS -->
+                <div x-show="result?.enrichment?.whois">
+                    <h4 class="text-md font-medium text-gray-300 mb-2">📝 WHOIS Info</h4>
+                    <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
+                        <template x-for="(value, key) in result?.enrichment?.whois" :key="key">
+                            <div class="grid grid-cols-[140px_1fr] gap-2" x-show="value">
+                                <span class="text-purple-400 truncate" x-text="key + ':'"></span>
+                                <span class="text-gray-300 break-all" x-text="value"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timestamp -->
+            <p class="text-center text-gray-500 text-sm">
+                Checked at: <span x-text="result?.checked_at"></span>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>Powered by <a href="https://github.com/newuni/url-reputation" class="text-blue-400 hover:underline">url-reputation</a> 🐙</p>
+        </footer>
+    </div>
+
+    <script>
+        function urlChecker() {
+            return {
+                url: '',
+                loading: false,
+                error: null,
+                result: null,
+                options: {
+                    enrichDns: false,
+                    enrichWhois: false
+                },
+
+                async checkUrl() {
+                    if (!this.url) return;
+                    
+                    this.loading = true;
+                    this.error = null;
+                    this.result = null;
+
+                    // Build enrich array
+                    const enrich = [];
+                    if (this.options.enrichDns) enrich.push('dns');
+                    if (this.options.enrichWhois) enrich.push('whois');
+
+                    try {
+                        const response = await fetch('/api/check', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                url: this.url,
+                                enrich: enrich.length ? enrich : null
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const data = await response.json();
+                            throw new Error(data.detail || 'Request failed');
+                        }
+
+                        this.result = await response.json();
+                    } catch (e) {
+                        this.error = e.message;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                getVerdictColor(verdict) {
+                    const colors = {
+                        'CLEAN': 'text-green-400',
+                        'LOW_RISK': 'text-yellow-400',
+                        'MEDIUM_RISK': 'text-orange-400',
+                        'HIGH_RISK': 'text-red-400'
+                    };
+                    return colors[verdict] || 'text-gray-400';
+                },
+
+                getBarColor(score) {
+                    if (score <= 20) return 'bg-green-500';
+                    if (score <= 50) return 'bg-yellow-500';
+                    if (score <= 75) return 'bg-orange-500';
+                    return 'bg-red-500';
+                }
+            };
+        }
+    </script>
+</body>
+</html>

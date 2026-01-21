@@ -1,60 +1,48 @@
 ---
 name: url-reputation
 description: |
-  Analyze URLs and domains for cybersecurity risks using multiple reputation sources.
+  Analyze URLs and domains for cybersecurity risks using 10 reputation sources.
   Use when checking if a URL/domain is malicious, phishing, spam, or has poor reputation.
-  Supports: VirusTotal, URLScan.io, Google Safe Browsing, URLhaus, PhishTank, Spamhaus, SURBL.
-  Works with partial API keys - free sources (URLhaus, PhishTank, DNSBL) always available.
+  Free sources always available: URLhaus, OpenPhish, DNSBL, AlienVault OTX.
 ---
 
 # URL Reputation Checker
 
 Multi-source URL/domain security analysis with aggregated risk scoring.
 
-## Quick Start
+## Quick Usage
 
 ```bash
-# Check a URL (uses all available sources)
-python3 scripts/check_url.py "https://example.com"
-
-# Check with specific sources only
-python3 scripts/check_url.py "https://example.com" --sources urlhaus,phishtank,dnsbl
+# Single URL
+url-reputation "https://example.com"
 
 # JSON output
-python3 scripts/check_url.py "https://example.com" --json
+url-reputation "https://example.com" --json
+
+# Batch from file
+url-reputation --file urls.txt
+
+# Specific sources only
+url-reputation "https://example.com" --sources urlhaus,dnsbl,alienvault_otx
 ```
 
-## Available Sources
+## Available Sources (10 total)
 
-| Source | API Key Required | Rate Limit | Checks |
-|--------|------------------|------------|--------|
-| URLhaus | No | Unlimited | Malware URLs |
-| PhishTank | No | Unlimited | Phishing URLs |
-| DNSBL (Spamhaus/SURBL) | No | Unlimited | Spam/malware domains |
-| VirusTotal | Yes | 4/min free | 70+ AV engines |
-| URLScan.io | Yes | 5000/day | Sandbox analysis |
-| Google Safe Browsing | Yes | 10k/day | Phishing/malware |
-| AbuseIPDB | Yes | 1000/day | IP reputation |
+### Free (no API key)
+- `urlhaus` - Malware URLs (abuse.ch)
+- `phishtank` - Phishing (OpenPhish)
+- `dnsbl` - Spamhaus DBL, SURBL, ZEN
+- `alienvault_otx` - Community threat intel
 
-## Environment Variables
-
-Set API keys as environment variables:
-
-```bash
-export VIRUSTOTAL_API_KEY="your-key"
-export URLSCAN_API_KEY="your-key"
-export GOOGLE_SAFEBROWSING_API_KEY="your-key"
-export ABUSEIPDB_API_KEY="your-key"
-```
-
-See `references/api_setup.md` for how to obtain free API keys.
+### With API key
+- `virustotal` - 70+ AV engines
+- `urlscan` - Sandbox analysis
+- `safebrowsing` - Google phishing/malware
+- `abuseipdb` - IP reputation
+- `ipqualityscore` - Fraud detection
+- `threatfox` - IOCs (abuse.ch)
 
 ## Risk Scoring
-
-The aggregated risk score (0-100) is calculated based on:
-- Number of sources flagging the URL
-- Severity weighting (malware > phishing > spam)
-- Confidence from multi-engine scanners (VirusTotal)
 
 | Score | Verdict |
 |-------|---------|
@@ -63,30 +51,14 @@ The aggregated risk score (0-100) is calculated based on:
 | 51-75 | MEDIUM_RISK |
 | 76-100 | HIGH_RISK |
 
-## Output Example
-
-```json
-{
-  "url": "http://malicious-example.com",
-  "domain": "malicious-example.com",
-  "risk_score": 85,
-  "verdict": "HIGH_RISK",
-  "checked_at": "2026-01-20T19:00:00Z",
-  "sources": {
-    "urlhaus": {"listed": true, "threat_type": "malware_download"},
-    "phishtank": {"listed": false},
-    "spamhaus_dbl": {"listed": true},
-    "surbl": {"listed": true},
-    "virustotal": {"detected": 12, "total": 70, "scan_date": "2026-01-20"}
-  }
-}
-```
-
-## Programmatic Usage
+## Python API
 
 ```python
-from scripts.check_url import check_url_reputation
+from url_reputation import check_url_reputation, check_urls_batch
 
-result = check_url_reputation("https://suspicious-site.com")
-print(f"Risk: {result['verdict']} ({result['risk_score']}/100)")
+result = check_url_reputation("https://example.com")
+print(f"{result['verdict']}: {result['risk_score']}/100")
+
+# Batch
+results = check_urls_batch(["https://a.com", "https://b.com"])
 ```
