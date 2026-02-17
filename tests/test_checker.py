@@ -215,6 +215,9 @@ class TestCheckUrlReputation(unittest.TestCase):
         self.assertIn('verdict', result)
         self.assertIn('checked_at', result)
         self.assertIn('sources', result)
+        self.assertIn('schema_version', result)
+        self.assertIn('indicator', result)
+        self.assertEqual(result['schema_version'], '1')
     
     @patch('url_reputation.checker.urlhaus')
     @patch('url_reputation.checker.phishtank')
@@ -241,9 +244,10 @@ class TestCheckUrlReputation(unittest.TestCase):
             sources=['urlhaus', 'dnsbl']
         )
         
-        self.assertIn('urlhaus', result['sources'])
-        self.assertIn('dnsbl', result['sources'])
-        self.assertNotIn('phishtank', result['sources'])
+        source_names = [s.get('name') for s in result['sources']]
+        self.assertIn('urlhaus', source_names)
+        self.assertIn('dnsbl', source_names)
+        self.assertNotIn('phishtank', source_names)
         mock_phish.check.assert_not_called()
     
     def test_handles_source_exception(self):
@@ -262,7 +266,9 @@ class TestCheckUrlReputation(unittest.TestCase):
     def test_all_sources_defined(self):
         expected_sources = [
             'urlhaus', 'phishtank', 'dnsbl',
-            'virustotal', 'urlscan', 'safebrowsing', 'abuseipdb'
+            'alienvault_otx', 'threatfox',
+            'virustotal', 'urlscan', 'safebrowsing', 'abuseipdb',
+            'ipqualityscore',
         ]
         for source in expected_sources:
             self.assertIn(source, ALL_SOURCES)
@@ -282,12 +288,14 @@ class TestApiKeyFiltering(unittest.TestCase):
         
         result = check_url_reputation("https://example.com")
         
+        source_names = [s.get('name') for s in result['sources']]
         # Only free sources should be in results
-        self.assertIn('urlhaus', result['sources'])
-        self.assertIn('phishtank', result['sources'])
-        self.assertIn('dnsbl', result['sources'])
-        self.assertNotIn('virustotal', result['sources'])
-        self.assertNotIn('urlscan', result['sources'])
+        self.assertIn('urlhaus', source_names)
+        self.assertIn('phishtank', source_names)
+        self.assertIn('dnsbl', source_names)
+        self.assertIn('alienvault_otx', source_names)
+        self.assertNotIn('virustotal', source_names)
+        self.assertNotIn('urlscan', source_names)
     
     @patch.dict('os.environ', {'VIRUSTOTAL_API_KEY': 'test-key'})
     def test_virustotal_with_key(self):

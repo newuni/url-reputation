@@ -68,7 +68,7 @@ Goal: external providers can be added without editing core.
 ### Phase 1 — Contract + provider architecture
 
 #### T1 — Define output schema v1 (URL/domain/IP)
-- Status: TODO
+- Status: DONE
 - Why: All downstream work (cache, CLI, API) depends on a stable contract.
 - Deliverables:
   - `url_reputation/models.py` (pydantic or dataclasses) with `ResultV1` + `SourceResultV1`
@@ -79,7 +79,11 @@ Goal: external providers can be added without editing core.
   - CLI `--json` output conforms to the new schema and includes `schema_version`.
   - Tests updated/added.
 - Notes:
-  - Keep backward compatibility where possible; if fields rename, include aliases.
+  - Implemented `ResultV1`/`SourceResultV1` as lightweight dataclasses (no hard pydantic dependency).
+  - `check_url_reputation()` now returns Schema v1 keys (`schema_version`, `indicator`, `sources[]`).
+  - Backward-compat convenience fields kept: `url`, `domain`.
+  - Added docs: `docs/schema-v1.md`.
+  - CI: `pytest` passes.
 
 #### T2 — Provider interface + registry
 - Status: TODO
@@ -165,11 +169,11 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-**T1 — Define output schema v1**
+**T2 — Provider interface + registry**
 
 When you tell me “sigue”, I will:
-1) implement T1,
+1) implement T2,
 2) run tests,
 3) commit + push,
-4) update this file (mark T1 DONE, add commit refs + notes),
+4) update this file (mark T2 DONE, add commit refs + notes),
 5) then stop and wait for your next instruction.

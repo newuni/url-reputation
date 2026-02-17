@@ -21,10 +21,10 @@ class TestPrintHumanReadable(unittest.TestCase):
             'risk_score': 0,
             'verdict': 'CLEAN',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {
-                'urlhaus': {'listed': False},
-                'dnsbl': {'listed': False},
-            }
+            'sources': [
+                {'name': 'urlhaus', 'status': 'ok', 'raw': {'listed': False}},
+                {'name': 'dnsbl', 'status': 'ok', 'raw': {'listed': False}},
+            ]
         }
         
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
@@ -43,9 +43,9 @@ class TestPrintHumanReadable(unittest.TestCase):
             'risk_score': 85,
             'verdict': 'HIGH_RISK',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {
-                'urlhaus': {'listed': True, 'threat_type': 'malware'},
-            }
+            'sources': [
+                {'name': 'urlhaus', 'status': 'ok', 'raw': {'listed': True, 'threat_type': 'malware'}},
+            ]
         }
         
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
@@ -63,9 +63,9 @@ class TestPrintHumanReadable(unittest.TestCase):
             'risk_score': 0,
             'verdict': 'CLEAN',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {
-                'urlhaus': {'error': 'Connection timeout'},
-            }
+            'sources': [
+                {'name': 'urlhaus', 'status': 'error', 'raw': {}, 'error': 'Connection timeout'},
+            ]
         }
         
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
@@ -82,9 +82,9 @@ class TestPrintHumanReadable(unittest.TestCase):
             'risk_score': 25,
             'verdict': 'LOW_RISK',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {
-                'virustotal': {'detected': 5, 'total': 70},
-            }
+            'sources': [
+                {'name': 'virustotal', 'status': 'ok', 'raw': {'detected': 5, 'total': 70}},
+            ]
         }
         
         with patch('sys.stdout', new=StringIO()) as mock_stdout:
@@ -101,12 +101,19 @@ class TestCLIMain(unittest.TestCase):
     @patch('url_reputation.cli.check_url_reputation')
     def test_basic_call(self, mock_check):
         mock_check.return_value = {
+            'schema_version': '1',
+            'indicator': {
+                'input': 'https://example.com',
+                'type': 'url',
+                'canonical': 'https://example.com',
+                'domain': 'example.com',
+            },
             'url': 'https://example.com',
             'domain': 'example.com',
             'risk_score': 0,
             'verdict': 'CLEAN',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {}
+            'sources': []
         }
         
         with patch('sys.argv', ['url-reputation', 'https://example.com']):
@@ -120,12 +127,21 @@ class TestCLIMain(unittest.TestCase):
     @patch('url_reputation.cli.check_url_reputation')
     def test_json_output(self, mock_check):
         expected_result = {
+            'schema_version': '1',
+            'indicator': {
+                'input': 'https://example.com',
+                'type': 'url',
+                'canonical': 'https://example.com',
+                'domain': 'example.com',
+            },
             'url': 'https://example.com',
             'domain': 'example.com',
             'risk_score': 0,
             'verdict': 'CLEAN',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {'urlhaus': {'listed': False}}
+            'sources': [
+                {'name': 'urlhaus', 'status': 'ok', 'raw': {'listed': False}},
+            ]
         }
         mock_check.return_value = expected_result
         
@@ -141,12 +157,19 @@ class TestCLIMain(unittest.TestCase):
     @patch('url_reputation.cli.check_url_reputation')
     def test_specific_sources(self, mock_check):
         mock_check.return_value = {
+            'schema_version': '1',
+            'indicator': {
+                'input': 'https://example.com',
+                'type': 'url',
+                'canonical': 'https://example.com',
+                'domain': 'example.com',
+            },
             'url': 'https://example.com',
             'domain': 'example.com',
             'risk_score': 0,
             'verdict': 'CLEAN',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {}
+            'sources': []
         }
         
         with patch('sys.argv', ['url-reputation', 'https://example.com', '-s', 'urlhaus,dnsbl']):
@@ -159,12 +182,19 @@ class TestCLIMain(unittest.TestCase):
     @patch('url_reputation.cli.check_url_reputation')
     def test_custom_timeout(self, mock_check):
         mock_check.return_value = {
+            'schema_version': '1',
+            'indicator': {
+                'input': 'https://example.com',
+                'type': 'url',
+                'canonical': 'https://example.com',
+                'domain': 'example.com',
+            },
             'url': 'https://example.com',
             'domain': 'example.com',
             'risk_score': 0,
             'verdict': 'CLEAN',
             'checked_at': '2026-01-20T19:00:00+00:00',
-            'sources': {}
+            'sources': []
         }
         
         with patch('sys.argv', ['url-reputation', 'https://example.com', '-t', '60']):

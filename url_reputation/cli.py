@@ -316,14 +316,20 @@ def print_human_readable(result: dict):
     print(f"\n📋 Source Results:")
     print(f"{'-'*50}")
     
-    for source, data in result['sources'].items():
-        if data.get('error'):
-            print(f"  {source}: ❌ Error - {data['error']}")
+    # Schema v1: sources is a list of source results
+    for src in result.get('sources', []):
+        source = src.get('name', 'unknown')
+        status = src.get('status')
+        data = src.get('raw', {})
+        err = src.get('error')
+
+        if status == 'error' or err:
+            print(f"  {source}: ❌ Error - {err or 'Unknown error'}")
         elif source == 'virustotal':
             detected = data.get('detected', 0)
             total = data.get('total', 0)
-            status = '🔴' if detected > 0 else '✅'
-            print(f"  {source}: {status} {detected}/{total} engines detected")
+            icon = '🔴' if detected > 0 else '✅'
+            print(f"  {source}: {icon} {detected}/{total} engines detected")
         elif data.get('listed'):
             threat = data.get('threat_type', data.get('match_type', 'unknown'))
             print(f"  {source}: 🔴 Listed ({threat})")

@@ -1,11 +1,14 @@
-"""
-URL Reputation Checker - Core logic
+"""URL Reputation Checker - Core logic.
+
+This module returns results in the **Schema v1** contract.
+See `docs/schema-v1.md`.
 """
 
 import os
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from typing import Optional
+import ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -22,6 +25,7 @@ except ImportError:
 
 from .sources import urlhaus, phishtank, dnsbl, virustotal, urlscan, safebrowsing, abuseipdb
 from .sources import alienvault_otx, ipqualityscore, threatfox
+from .models import ResultV1, IndicatorV1, SourceResultV1
 
 ALL_SOURCES = {
     # Free sources (no API key required)
@@ -49,11 +53,60 @@ THREAT_WEIGHTS = {
 }
 
 
+def _is_ip(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except Exception:
+        return False
+
+
+def canonicalize_indicator(value: str) -> IndicatorV1:
+    """Best-effort indicator typing + canonicalization.
+
+    Rules (v1):
+    - If it's an IP literal -> type=ip
+    - Else if it has scheme or looks like a URL path -> type=url
+    - Else -> type=domain
+
+    Canonicalization is intentionally conservative in v1.
+    """
+    raw = value.strip()
+
+    if _is_ip(raw):
+        return IndicatorV1(input=value, type="ip", canonical=raw, domain=None)
+
+    has_scheme = raw.startswith(("http://", "https://"))
+    looks_like_url = has_scheme or "/" in raw or "?" in raw
+
+    if looks_like_url:
+        url = raw
+        if not has_scheme:
+            url = "http://" + url
+        parsed = urlparse(url)
+        # Normalize scheme + hostname casing; keep path/query as-is.
+        scheme = (parsed.scheme or "http").lower()
+        netloc = parsed.netloc.lower()
+        # Strip fragment.
+        canonical = urlunparse((scheme, netloc, parsed.path or "", parsed.params or "", parsed.query or "", ""))
+        domain = netloc.split("@")[ -1 ].split(":")[0] if netloc else None
+        return IndicatorV1(input=value, type="url", canonical=canonical, domain=domain)
+
+    # Domain
+    domain = raw.rstrip(".").lower()
+    return IndicatorV1(input=value, type="domain", canonical=domain, domain=domain)
+
+
 def extract_domain(url: str) -> str:
-    """Extract domain from URL."""
-    if not url.startswith(('http://', 'https://')):
-        url = 'http://' + url
-    parsed = urlparse(url)
+    """Extract the network location from a URL.
+
+    Backwards-compat helper used by some callers/tests.
+    Note: this returns the raw `netloc` which may include userinfo and port.
+    """
+    value = url
+    if not value.startswith(('http://', 'https://')):
+        value = 'http://' + value
+    parsed = urlparse(value)
     return parsed.netloc or parsed.path.split('/')[0]
 
 
@@ -129,24 +182,19 @@ def check_url_reputation(
     sources: Optional[list[str]] = None,
     timeout: int = 30
 ) -> dict:
+    """Check reputation across multiple sources.
+
+    Returns a dict conforming to **Schema v1**.
     """
-    Check URL reputation across multiple sources.
-    
-    Args:
-        url: URL or domain to check
-        sources: List of sources to use (default: all available)
-        timeout: Timeout in seconds for each source
-        
-    Returns:
-        Dict with risk_score, verdict, and per-source results
-    """
-    domain = extract_domain(url)
-    
+
+    indicator = canonicalize_indicator(url)
+    domain = indicator.domain or indicator.canonical
+
     if sources is None:
         sources = list(ALL_SOURCES.keys())
-    
+
     # Filter to only sources that have required API keys
-    available_sources = []
+    available_sources: list[str] = []
     for source in sources:
         if source in FREE_SOURCES:
             available_sources.append(source)
@@ -162,32 +210,77 @@ def check_url_reputation(
             available_sources.append(source)
         elif source == 'threatfox' and os.getenv('THREATFOX_API_KEY'):
             available_sources.append(source)
-    
-    results = {}
-    
-    with ThreadPoolExecutor(max_workers=len(available_sources)) as executor:
-        futures = {
-            executor.submit(ALL_SOURCES[source], url, domain, timeout): source
-            for source in available_sources
-        }
-        
-        for future in as_completed(futures):
-            source = futures[future]
-            try:
-                results[source] = future.result()
-            except Exception as e:
-                results[source] = {'error': str(e)}
-    
-    risk_score, verdict = calculate_risk_score(results)
-    
-    return {
-        'url': url,
-        'domain': domain,
-        'risk_score': risk_score,
-        'verdict': verdict,
-        'checked_at': datetime.now(timezone.utc).isoformat(),
-        'sources': results,
-    }
+
+    results_map: dict[str, dict] = {}
+
+    if available_sources:
+        with ThreadPoolExecutor(max_workers=len(available_sources)) as executor:
+            futures = {
+                executor.submit(ALL_SOURCES[source], indicator.canonical, domain, timeout): source
+                for source in available_sources
+            }
+
+            for future in as_completed(futures):
+                source = futures[future]
+                try:
+                    results_map[source] = future.result()
+                except Exception as e:
+                    results_map[source] = {'error': str(e)}
+
+    risk_score, verdict = calculate_risk_score(results_map)
+
+    sources_list: list[SourceResultV1] = []
+    for name in available_sources:
+        payload = results_map.get(name, {})
+        if payload.get('error'):
+            sources_list.append(
+                SourceResultV1(
+                    name=name,
+                    status="error",
+                    raw={k: v for k, v in payload.items() if k != 'error'},
+                    error=str(payload.get('error')),
+                )
+            )
+            continue
+
+        listed = None
+        if 'listed' in payload:
+            listed = bool(payload.get('listed'))
+        elif 'malicious' in payload:
+            listed = bool(payload.get('malicious'))
+
+        score = None
+        if isinstance(payload.get('risk_score'), (int, float)):
+            score = float(payload['risk_score'])
+        elif isinstance(payload.get('abuse_score'), (int, float)):
+            score = float(payload['abuse_score'])
+
+        sources_list.append(
+            SourceResultV1(
+                name=name,
+                status="ok",
+                listed=listed,
+                score=score,
+                raw=payload,
+            )
+        )
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+    result = ResultV1(
+        schema_version="1",
+        indicator=indicator,
+        verdict=verdict,
+        risk_score=risk_score,
+        checked_at=checked_at,
+        sources=sources_list,
+        enrichment=None,
+    )
+
+    # Backwards-compatible convenience fields (non-schema)
+    out = result.to_dict()
+    out['url'] = indicator.input
+    out['domain'] = domain
+    return out
 
 
 def check_urls_batch(
