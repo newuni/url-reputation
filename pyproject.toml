@@ -72,6 +72,13 @@ ignore_errors = true
 Homepage = "https://github.com/newuni/url-reputation"
 Repository = "https://github.com/newuni/url-reputation"
 
+[project.entry-points."url_reputation.providers"]
+# External packages can register providers here.
+# Example: mypkg = "mypkg.providers:provider"
+
+[project.entry-points."url_reputation.enrichers"]
+# External packages can register enrichers here.
+
 [project.scripts]
 url-reputation = "url_reputation.cli:main"
 

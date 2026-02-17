@@ -9,7 +9,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 from .checker import check_url_reputation
-from .enrich import enrich
+from .enrichment.service import enrich_domain
 from .output import (
     exit_code_from_results,
     exit_code_from_verdict,
@@ -190,7 +190,7 @@ def main():
         # Add enrichment if requested
         if args.enrich:
             enrich_types = [t.strip() for t in args.enrich.split(',')]
-            result['enrichment'] = enrich(result['domain'], enrich_types, args.timeout)
+            result['enrichment'] = enrich_domain(result['domain'], types=enrich_types, timeout=args.timeout)
 
         if out_format == 'json':
             if args.legacy_json:

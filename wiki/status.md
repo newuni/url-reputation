@@ -204,30 +204,40 @@ Goal: external providers can be added without editing core.
 ### Phase 4 — Enrichment & normalization
 
 #### T9 — Canonicalization and indicator typing
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Canonical URL normalization + IDN/punycode
   - Determine `indicator_type` reliably
+- Notes:
+  - Added `url_reputation/normalize.py` and updated `canonicalize_indicator()` to use it.
+  - Canonicalization includes: scheme/lowercase host, IDNA punycode, fragment removal, default port stripping.
 
 #### T10 — Enrichment plugins (dns/whois/redirects/asn)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Enrichment interface similar to providers
   - Optional based on flags: `--enrich dns,whois,redirects,asn`
+- Notes:
+  - Added `url_reputation/enrichment/` with Enricher interface + registry.
+  - Implemented built-in enrichers for `dns` and `whois`.
+  - CLI now uses `enrich_domain()`.
 
 ### Phase 5 — Plugins + ecosystem
 
 #### T11 — Entry points for external providers
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `pyproject.toml` entrypoints
   - docs: how to publish a provider package
+- Notes:
+  - Added entrypoint groups in `pyproject.toml` and loader in `Registry.load_entrypoints()`.
+  - Documented in `docs/plugins.md`.
 
 ---
 
 ## Next task to execute
 
-**T9 — Canonicalization and indicator typing**
+(Backlog complete up to T11)
 
 When you tell me “sigue”, I will:
 1) implement T6,

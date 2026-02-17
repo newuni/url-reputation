@@ -38,7 +38,10 @@ class _FnProvider(Provider):
 
 
 def builtin_providers() -> dict[str, Provider]:
-    return {
+    # Built-ins merged with entrypoint providers
+    from .registry import Registry
+
+    providers = {
         # Free sources
         'urlhaus': _FnProvider('urlhaus', urlhaus.check, max_concurrency=10),
         'phishtank': _FnProvider('phishtank', phishtank.check, max_concurrency=10),
@@ -89,3 +92,6 @@ def builtin_providers() -> dict[str, Provider]:
             retry_retries=2,
         ),
     }
+
+    providers.update(Registry.load_entrypoints())
+    return providers

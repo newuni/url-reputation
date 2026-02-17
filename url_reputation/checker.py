@@ -4,12 +4,11 @@ This module returns results in the **Schema v1** contract.
 See `docs/schema-v1.md`.
 """
 
-import ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 # Load .env file if present
 try:
@@ -69,48 +68,16 @@ THREAT_WEIGHTS = {
 }
 
 
-def _is_ip(value: str) -> bool:
-    try:
-        ipaddress.ip_address(value)
-        return True
-    except Exception:
-        return False
-
-
 def canonicalize_indicator(value: str) -> IndicatorV1:
-    """Best-effort indicator typing + canonicalization.
+    """Canonicalization and indicator typing (T9).
 
-    Rules (v1):
-    - If it's an IP literal -> type=ip
-    - Else if it has scheme or looks like a URL path -> type=url
-    - Else -> type=domain
-
-    Canonicalization is intentionally conservative in v1.
+    Uses `url_reputation.normalize.normalize_indicator`.
     """
-    raw = value.strip()
 
-    if _is_ip(raw):
-        return IndicatorV1(input=value, type="ip", canonical=raw, domain=None)
+    from .normalize import normalize_indicator
 
-    has_scheme = raw.startswith(("http://", "https://"))
-    looks_like_url = has_scheme or "/" in raw or "?" in raw
-
-    if looks_like_url:
-        url = raw
-        if not has_scheme:
-            url = "http://" + url
-        parsed = urlparse(url)
-        # Normalize scheme + hostname casing; keep path/query as-is.
-        scheme = (parsed.scheme or "http").lower()
-        netloc = parsed.netloc.lower()
-        # Strip fragment.
-        canonical = urlunparse((scheme, netloc, parsed.path or "", parsed.params or "", parsed.query or "", ""))
-        domain = netloc.split("@")[ -1 ].split(":")[0] if netloc else None
-        return IndicatorV1(input=value, type="url", canonical=canonical, domain=domain)
-
-    # Domain
-    domain = raw.rstrip(".").lower()
-    return IndicatorV1(input=value, type="domain", canonical=domain, domain=domain)
+    n = normalize_indicator(value)
+    return IndicatorV1(input=n.input, type=n.type, canonical=n.canonical, domain=n.domain)
 
 
 def extract_domain(url: str) -> str:
