@@ -86,7 +86,7 @@ Goal: external providers can be added without editing core.
   - CI: `pytest` passes.
 
 #### T2 — Provider interface + registry
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `url_reputation/providers/base.py` with `Provider` interface
   - `url_reputation/providers/registry.py` with registration and selection
@@ -94,6 +94,11 @@ Goal: external providers can be added without editing core.
 - Definition of Done:
   - `check_url_reputation()` uses providers via registry
   - providers can be enabled by name and auto-disabled if missing API key
+- Notes:
+  - Added `url_reputation/providers/` with Provider interface + Registry.
+  - Implemented built-in provider wrappers around existing source modules.
+  - `check_url_reputation()` now selects providers through the registry, keeping existing behavior.
+  - Tests pass.
 
 #### T3 — Profiles (fast / thorough / privacy / free-only)
 - Status: TODO
@@ -169,7 +174,7 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-**T2 — Provider interface + registry**
+**T3 — Profiles (fast / thorough / privacy / free-only)**
 
 When you tell me “sigue”, I will:
 1) implement T2,

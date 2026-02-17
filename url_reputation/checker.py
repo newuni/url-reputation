@@ -26,7 +26,9 @@ except ImportError:
 from .sources import urlhaus, phishtank, dnsbl, virustotal, urlscan, safebrowsing, abuseipdb
 from .sources import alienvault_otx, ipqualityscore, threatfox
 from .models import ResultV1, IndicatorV1, SourceResultV1
+from .providers import Registry, ProviderContext, builtin_providers
 
+# NOTE: ALL_SOURCES/FREE_SOURCES are kept for backwards-compat/tests.
 ALL_SOURCES = {
     # Free sources (no API key required)
     'urlhaus': urlhaus.check,
@@ -43,6 +45,10 @@ ALL_SOURCES = {
 }
 
 FREE_SOURCES = ['urlhaus', 'phishtank', 'dnsbl', 'alienvault_otx']
+
+
+def get_default_registry() -> Registry:
+    return Registry(builtin_providers())
 
 THREAT_WEIGHTS = {
     'malware': 40,
@@ -193,44 +199,31 @@ def check_url_reputation(
     if sources is None:
         sources = list(ALL_SOURCES.keys())
 
-    # Filter to only sources that have required API keys
-    available_sources: list[str] = []
-    for source in sources:
-        if source in FREE_SOURCES:
-            available_sources.append(source)
-        elif source == 'virustotal' and os.getenv('VIRUSTOTAL_API_KEY'):
-            available_sources.append(source)
-        elif source == 'urlscan' and os.getenv('URLSCAN_API_KEY'):
-            available_sources.append(source)
-        elif source == 'safebrowsing' and os.getenv('GOOGLE_SAFEBROWSING_API_KEY'):
-            available_sources.append(source)
-        elif source == 'abuseipdb' and os.getenv('ABUSEIPDB_API_KEY'):
-            available_sources.append(source)
-        elif source == 'ipqualityscore' and os.getenv('IPQUALITYSCORE_API_KEY'):
-            available_sources.append(source)
-        elif source == 'threatfox' and os.getenv('THREATFOX_API_KEY'):
-            available_sources.append(source)
+    registry = get_default_registry()
+    providers = registry.select(sources, only_available=True)
+    ctx = ProviderContext(timeout=timeout)
 
     results_map: dict[str, dict] = {}
 
-    if available_sources:
-        with ThreadPoolExecutor(max_workers=len(available_sources)) as executor:
+    if providers:
+        with ThreadPoolExecutor(max_workers=len(providers)) as executor:
             futures = {
-                executor.submit(ALL_SOURCES[source], indicator.canonical, domain, timeout): source
-                for source in available_sources
+                executor.submit(p.check, indicator.canonical, domain, ctx): p.name
+                for p in providers
             }
 
             for future in as_completed(futures):
-                source = futures[future]
+                name = futures[future]
                 try:
-                    results_map[source] = future.result()
+                    results_map[name] = future.result()
                 except Exception as e:
-                    results_map[source] = {'error': str(e)}
+                    results_map[name] = {'error': str(e)}
 
     risk_score, verdict = calculate_risk_score(results_map)
 
     sources_list: list[SourceResultV1] = []
-    for name in available_sources:
+    for p in providers:
+        name = p.name
         payload = results_map.get(name, {})
         if payload.get('error'):
             sources_list.append(
