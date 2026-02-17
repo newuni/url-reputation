@@ -50,6 +50,10 @@ cd url-reputation
 python3 scripts/check_url.py "https://example.com"
 ```
 
+## 🧑‍💻 Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for Docker-based dev + running tests.
+
 ## 🐳 Docker Deployment
 
 Run the web UI with Docker for a visual interface accessible from any browser.
