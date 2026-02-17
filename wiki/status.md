@@ -251,6 +251,7 @@ Goal: external providers can be added without editing core.
   - Tests cover basic shape + non-URL skip
   - Docs updated (`docs/schema-v1.md` / enrichment docs)
 - Notes:
+  - Commit: `1d247d7` — feat: redirects enricher + typed enrichment context
   - Enrichment framework now supports indicator types (url/domain/ip) so URL-based enrichers can exist.
   - Added built-in enricher: `redirects` (URL redirect chain + final URL).
   - Added tests and made DNS enrichment tests deterministic when dnspython is installed.
