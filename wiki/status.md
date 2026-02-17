@@ -114,6 +114,17 @@ Goal: external providers can be added without editing core.
 
 ### Maintenance / cleanup (rolling)
 
+#### C3 — Static analysis toolchain (ruff + mypy)
+- Status: IN_PROGRESS
+- Notes:
+  - Added Ruff (lint rules) + mypy (type checking) configuration in `pyproject.toml` and docs in `docs/static-analysis.md`.
+  - Current state: `ruff check .` reports findings (imports sorting, bare excepts, long lines, a few bug-risk patterns).
+  - Next: iterate in small chunks:
+    1) Apply safe auto-fixes (`ruff check . --fix`) + organize imports
+    2) Replace bare `except:` with explicit exceptions
+    3) Address long lines / readability
+    4) Start running `mypy url_reputation` and fix the highest-value type issues
+
 #### C0 — Stop tracking build artifacts (dist/)
 - Status: DONE
 - Notes:
