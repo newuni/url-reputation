@@ -22,8 +22,9 @@ try:
 except ImportError:
     pass  # dotenv not installed, rely on environment variables
 
-from .models import IndicatorV1, ResultV1, SourceResultV1
+from .models import IndicatorV1, RateLimitV1, ResultV1, SourceResultV1
 from .providers import ProviderContext, Registry, builtin_providers
+from .retry import RetryPolicy, retry_call
 from .sources import (
     abuseipdb,
     alienvault_otx,
@@ -234,12 +235,40 @@ def check_url_reputation(
 
     results_map: dict[str, dict] = {}
 
+    # Concurrency controls (process-wide), useful in batch mode.
+    import threading
+
+    global_limit = int(__import__("os").getenv("URL_REPUTATION_MAX_CONCURRENCY", "20"))
+    if not hasattr(check_url_reputation, "_global_sem"):
+        check_url_reputation._global_sem = threading.Semaphore(global_limit)  # type: ignore[attr-defined]
+        check_url_reputation._provider_sems = {}  # type: ignore[attr-defined]
+
+    global_sem = check_url_reputation._global_sem  # type: ignore[attr-defined]
+    provider_sems: dict[str, threading.Semaphore] = check_url_reputation._provider_sems  # type: ignore[attr-defined]
+
+    def _get_provider_sem(pname: str, limit: int) -> threading.Semaphore:
+        if pname not in provider_sems:
+            provider_sems[pname] = threading.Semaphore(max(1, limit))
+        return provider_sems[pname]
+
+    def _should_retry_exc(e: Exception) -> bool:
+        msg = str(e).lower()
+        return any(s in msg for s in ["429", "rate limit", "timeout", "timed out", "temporarily"])
+
+    def _run_provider(p):
+        sem = _get_provider_sem(p.name, getattr(p, "max_concurrency", 5))
+
+        def _call():
+            with global_sem:
+                with sem:
+                    return p.check(indicator.canonical, domain, ctx)
+
+        policy = RetryPolicy(retries=getattr(p, "retry_retries", 2))
+        return retry_call(_call, policy=policy, should_retry=_should_retry_exc)
+
     if providers:
         with ThreadPoolExecutor(max_workers=len(providers)) as executor:
-            futures = {
-                executor.submit(p.check, indicator.canonical, domain, ctx): p.name
-                for p in providers
-            }
+            futures = {executor.submit(_run_provider, p): p.name for p in providers}
 
             for future in as_completed(futures):
                 name = futures[future]
@@ -277,6 +306,18 @@ def check_url_reputation(
         elif isinstance(payload.get('abuse_score'), (int, float)):
             score = float(payload['abuse_score'])
 
+        rate_limit = None
+        try:
+            rl = p.parse_rate_limit(payload)
+            if isinstance(rl, dict):
+                rate_limit = RateLimitV1(
+                    limit=rl.get("limit"),
+                    remaining=rl.get("remaining"),
+                    reset_at=rl.get("reset_at"),
+                )
+        except Exception:
+            rate_limit = None
+
         sources_list.append(
             SourceResultV1(
                 name=name,
@@ -284,6 +325,7 @@ def check_url_reputation(
                 listed=listed,
                 score=score,
                 raw=payload,
+                rate_limit=rate_limit,
             )
         )
 

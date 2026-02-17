@@ -154,13 +154,19 @@ Goal: external providers can be added without editing core.
   - Added tests in `tests/test_cache.py`.
 
 #### T5 — Provider-specific retries/backoff + concurrency limits
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - common retry utility with exponential backoff + jitter
   - provider concurrency limits (per provider + global)
   - surface rate-limit metadata in `SourceResultV1.rate_limit?`
 - Definition of Done:
   - 429 handling does not spam; respects reset windows when available
+- Notes:
+  - Added `url_reputation/retry.py` (exponential backoff + jitter).
+  - Enforced process-wide + per-provider concurrency using semaphores (useful in batch mode).
+  - Providers can set `max_concurrency` and `retry_retries` (configured for built-ins).
+  - `SourceResultV1.rate_limit` is now populated when providers implement `parse_rate_limit()`.
+  - Tests added for retry helper.
 
 ### Phase 3 — CLI ergonomics + CI integration
 
@@ -208,7 +214,7 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-**T5 — Provider-specific retries/backoff + concurrency limits**
+**T6 — Exit codes + `--fail-on`**
 
 When you tell me “sigue”, I will:
 1) implement T2,

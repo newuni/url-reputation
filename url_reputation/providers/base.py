@@ -21,6 +21,13 @@ class Provider:
     # Stable provider name used in CLI flags and output.
     name: str
 
+    # Concurrency limit across the whole process (applies mainly in batch mode).
+    # The checker will enforce this with a semaphore.
+    max_concurrency: int = 5
+
+    # Retry policy: providers can override.
+    retry_retries: int = 2
+
     def is_available(self) -> bool:
         """Whether this provider can run in the current environment.
 
