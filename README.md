@@ -112,18 +112,32 @@ curl -X POST http://localhost:8095/api/batch \
   -d '{"urls": ["https://google.com", "https://github.com"]}'
 ```
 
-**Response format:**
+**Response format (Schema v1):**
 ```json
 {
-  "url": "https://example.com",
-  "domain": "example.com",
-  "risk_score": 0,
+  "schema_version": "1",
+  "indicator": {
+    "input": "https://example.com",
+    "type": "url",
+    "canonical": "https://example.com",
+    "domain": "example.com"
+  },
   "verdict": "CLEAN",
-  "sources": { ... },
+  "risk_score": 0,
+  "checked_at": "2026-02-17T13:00:00.000000+00:00",
+  "sources": [
+    {
+      "name": "urlhaus",
+      "status": "ok",
+      "raw": {"listed": false}
+    }
+  ],
   "enrichment": {
-    "dns": { "a_record": "93.184.216.34", ... },
-    "whois": { "registrar": "...", ... }
-  }
+    "dns": {"a_records": ["93.184.216.34"]},
+    "whois": {"registrar": "..."}
+  },
+  "url": "https://example.com",
+  "domain": "example.com"
 }
 ```
 
@@ -152,10 +166,37 @@ Domain: google.com
 ⏱️  Checked at: 2026-01-20T19:13:22.562378+00:00
 ```
 
-### JSON output
+### JSON output (Schema v1)
 
 ```bash
 $ url-reputation "https://google.com" --json
+```
+
+### Profiles (developer-friendly presets)
+
+```bash
+# Only providers that work without API keys
+url-reputation "https://example.com" --profile free
+
+# Try everything available (auto-skips providers missing API keys)
+url-reputation "https://example.com" --profile thorough
+```
+
+### Cache (sqlite)
+
+```bash
+# Use default cache path (~/.cache/url-reputation/cache.sqlite)
+url-reputation "https://example.com" --cache --cache-ttl 24h
+
+# Custom cache path
+url-reputation "https://example.com" --cache /tmp/urlrep.sqlite --cache-ttl 10m
+```
+
+### Legacy JSON compatibility
+
+```bash
+# Include `sources_map` for older consumers
+url-reputation "https://example.com" --json --legacy-json
 ```
 
 ```json
