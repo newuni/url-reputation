@@ -117,7 +117,8 @@ class TestCLIMain(unittest.TestCase):
         
         with patch('sys.argv', ['url-reputation', 'https://example.com']):
             with patch('sys.stdout', new=StringIO()):
-                main()
+                with self.assertRaises(SystemExit):
+                    main()
         
         mock_check.assert_called_once()
         call_args = mock_check.call_args
@@ -146,7 +147,8 @@ class TestCLIMain(unittest.TestCase):
         
         with patch('sys.argv', ['url-reputation', 'https://example.com', '--json']):
             with patch('sys.stdout', new=StringIO()) as mock_stdout:
-                main()
+                with self.assertRaises(SystemExit):
+                    main()
                 output = mock_stdout.getvalue()
         
         parsed = json.loads(output)
@@ -173,7 +175,8 @@ class TestCLIMain(unittest.TestCase):
         
         with patch('sys.argv', ['url-reputation', 'https://example.com', '-s', 'urlhaus,dnsbl']):
             with patch('sys.stdout', new=StringIO()):
-                main()
+                with self.assertRaises(SystemExit):
+                    main()
         
         call_args = mock_check.call_args
         self.assertEqual(call_args[0][1], ['urlhaus', 'dnsbl'])
@@ -198,7 +201,8 @@ class TestCLIMain(unittest.TestCase):
         
         with patch('sys.argv', ['url-reputation', 'https://example.com', '-t', '60']):
             with patch('sys.stdout', new=StringIO()):
-                main()
+                with self.assertRaises(SystemExit):
+                    main()
         
         call_args = mock_check.call_args
         self.assertEqual(call_args[0][2], 60)

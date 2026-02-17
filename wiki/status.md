@@ -171,22 +171,35 @@ Goal: external providers can be added without editing core.
 ### Phase 3 — CLI ergonomics + CI integration
 
 #### T6 — Exit codes + `--fail-on`
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--fail-on CLEAN|LOW_RISK|MEDIUM_RISK|HIGH_RISK|ERROR`
   - deterministic exit codes for pipelines
+- Notes:
+  - CLI now exits with:
+    - `0` = ok
+    - `1` = fail-on threshold reached
+    - `2` = verdict ERROR (when fail-on not set) / unexpected error surfaced as ERROR
+  - Added tests in `tests/test_exit_codes.py`.
 
 #### T7 — Output formats (pretty/json/ndjson/sarif)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--format pretty|json|ndjson|sarif`
   - SARIF for GitHub Code Scanning (optional)
+- Notes:
+  - Added `--format` flag.
+  - Implemented minimal SARIF 2.1.0 output.
+  - `--json` remains as an alias for `--format json`.
 
 #### T8 — Batch streaming + large files
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--file` supports large lists efficiently
   - NDJSON streaming mode; progress summaries
+- Notes:
+  - Added `iter_urls_from_file()` + `run_batch()` that stream input and bound in-flight tasks.
+  - Added NDJSON output mode for streaming consumption.
 
 ### Phase 4 — Enrichment & normalization
 
@@ -214,10 +227,10 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-**T6 — Exit codes + `--fail-on`**
+**T9 — Canonicalization and indicator typing**
 
 When you tell me “sigue”, I will:
-1) implement T2,
+1) implement T6,
 2) run tests,
 3) commit + push,
 4) update this file (mark T2 DONE, add commit refs + notes),

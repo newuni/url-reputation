@@ -6,10 +6,16 @@ URL Reputation Checker - CLI entry point
 import argparse
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 from .checker import check_url_reputation
 from .enrich import enrich
+from .output import (
+    exit_code_from_results,
+    exit_code_from_verdict,
+    to_sarif,
+    worst_verdict,
+)
 from .webhook import notify_on_risk
 
 
@@ -41,12 +47,24 @@ def main():
     parser.add_argument(
         '--json', '-j',
         action='store_true',
-        help='Output as JSON'
+        help='Output as JSON (alias for --format json)'
+    )
+    parser.add_argument(
+        '--format',
+        choices=['pretty', 'json', 'ndjson', 'sarif'],
+        default=None,
+        help='Output format (default: pretty; --json is an alias for json)'
     )
     parser.add_argument(
         '--legacy-json',
         action='store_true',
         help='Include legacy fields in JSON output (e.g. sources_map)'
+    )
+    parser.add_argument(
+        '--fail-on',
+        choices=['CLEAN', 'LOW_RISK', 'MEDIUM_RISK', 'HIGH_RISK', 'ERROR'],
+        default=None,
+        help='Exit non-zero when verdict is at or above this level (useful for CI)'
     )
     parser.add_argument(
         '--timeout', '-t',
@@ -100,6 +118,10 @@ def main():
     )
     
     args = parser.parse_args()
+
+    out_format = args.format
+    if out_format is None:
+        out_format = 'json' if args.json else 'pretty'
     
     # Validate arguments
     if not args.url and not args.file:
@@ -111,25 +133,49 @@ def main():
     if sources is None and args.profile:
         sources = get_profile(args.profile).providers
     
+    exit_code = 0
+
     # Batch mode: process file
     if args.file:
-        results = check_urls_from_file(
-            args.file,
+        results_iter = iter_urls_from_file(args.file)
+        results = run_batch(
+            results_iter,
             sources=sources,
             timeout=args.timeout,
-            max_workers=args.workers
+            max_workers=args.workers,
+            cache=args.cache,
+            cache_ttl=args.cache_ttl,
+            no_cache=args.no_cache,
         )
-        
-        if args.json:
-            print(json.dumps(results, indent=2))
+
+        if out_format == 'json':
+            payload = list(results)
+            print(json.dumps(payload, indent=2))
+            exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
+        elif out_format == 'ndjson':
+            worst = 'CLEAN'
+            for r in results:
+                if args.legacy_json:
+                    r['sources_map'] = {s.get('name'): s.get('raw') for s in r.get('sources', [])}
+                print(json.dumps(r, ensure_ascii=False))
+                worst = worst_verdict(worst, r.get('verdict', 'ERROR'))
+            exit_code = exit_code_from_verdict(worst, fail_on=args.fail_on)
+        elif out_format == 'sarif':
+            payload = list(results)
+            print(json.dumps(to_sarif(payload), indent=2))
+            exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
         else:
-            print_batch_results(results)
+            payload = list(results)
+            print_batch_results(payload)
+            exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
+
     else:
         # Single URL mode
         cache_path = None
         cache_ttl_seconds = None
         if args.cache and not args.no_cache:
             from .cache import default_cache_path, parse_ttl
+
             cache_path = default_cache_path() if args.cache == 'default' else args.cache
             cache_ttl_seconds = parse_ttl(args.cache_ttl)
 
@@ -140,82 +186,127 @@ def main():
             cache_path=cache_path,
             cache_ttl_seconds=cache_ttl_seconds,
         )
-        
+
         # Add enrichment if requested
         if args.enrich:
             enrich_types = [t.strip() for t in args.enrich.split(',')]
             result['enrichment'] = enrich(result['domain'], enrich_types, args.timeout)
-        
-        if args.json:
+
+        if out_format == 'json':
             if args.legacy_json:
                 # Provide a legacy map of provider results for older consumers.
-                result['sources_map'] = {s.get('name'): s.get('raw') for s in result.get('sources', [])}
-            print(json.dumps(result, indent=2))
+                result['sources_map'] = {
+                    s.get('name'): s.get('raw') for s in result.get('sources', [])
+                }
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        elif out_format == 'sarif':
+            print(json.dumps(to_sarif([result]), indent=2))
         else:
             print_human_readable(result)
             if args.enrich:
                 print_enrichment(result.get('enrichment', {}))
-        
+
         # Send webhook notification if configured
         _maybe_send_webhook(result, args)
+        exit_code = exit_code_from_verdict(result.get('verdict', 'ERROR'), fail_on=args.fail_on)
+
+    raise SystemExit(exit_code)
+
+
+def iter_urls_from_file(filepath: str):
+    """Yield URLs from a file (streaming).
+
+    Skips empty lines and comments.
+    """
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                yield line
 
 
 def check_urls_from_file(
     filepath: str,
-    sources: list = None,
+    sources: list | None = None,
     timeout: int = 30,
-    max_workers: int = 5
-) -> list:
+    max_workers: int = 5,
+):
+    """Backward-compatible wrapper: returns a list.
+
+    Note: for large files prefer streaming via `iter_urls_from_file()` + `run_batch()`.
     """
-    Check multiple URLs from a file.
-    
-    Args:
-        filepath: Path to file with URLs (one per line)
-        sources: List of sources to use
-        timeout: Timeout per source
-        max_workers: Maximum parallel workers
-        
-    Returns:
-        List of results for each URL
+
+    urls_iter = iter_urls_from_file(filepath)
+    return list(
+        run_batch(
+            urls_iter,
+            sources=sources,
+            timeout=timeout,
+            max_workers=max_workers,
+            cache=None,
+            cache_ttl='24h',
+            no_cache=True,
+        )
+    )
+
+
+def run_batch(
+    urls_iter,
+    *,
+    sources: list | None,
+    timeout: int,
+    max_workers: int,
+    cache: str | None,
+    cache_ttl: str,
+    no_cache: bool,
+):
+    """Run batch checks with bounded in-flight tasks.
+
+    This avoids loading huge files into memory.
+
+    Notes:
+    - Results are yielded as they are completed (not necessarily original order).
+    - For stable order, users can post-process using `indicator`/`url`.
     """
-    # Read URLs from file
-    urls = []
-    with open(filepath) as f:
-        for line in f:
-            line = line.strip()
-            # Skip empty lines and comments
-            if line and not line.startswith('#'):
-                urls.append(line)
-    
-    if not urls:
-        return []
-    
-    results = []
-    
-    # Process URLs in parallel
+
+    from .cache import default_cache_path, parse_ttl
+
+    cache_path = None
+    cache_ttl_seconds = None
+    if cache and not no_cache:
+        cache_path = default_cache_path() if cache == 'default' else cache
+        cache_ttl_seconds = parse_ttl(cache_ttl)
+
+    max_in_flight = max_workers * 3
+
+    def submit(executor, url):
+        return executor.submit(
+            check_url_reputation,
+            url,
+            sources,
+            timeout,
+            cache_path=cache_path,
+            cache_ttl_seconds=cache_ttl_seconds,
+        )
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_url = {
-            executor.submit(check_url_reputation, url, sources, timeout): url
-            for url in urls
-        }
-        
-        for future in as_completed(future_to_url):
-            url = future_to_url[future]
+        pending: list[tuple[str, object]] = []
+
+        for url in urls_iter:
+            pending.append((url, submit(executor, url)))
+
+            if len(pending) >= max_in_flight:
+                u, fut = pending.pop(0)
+                try:
+                    yield fut.result()  # type: ignore[attr-defined]
+                except Exception as e:
+                    yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
+
+        for u, fut in pending:
             try:
-                result = future.result()
-                results.append(result)
+                yield fut.result()  # type: ignore[attr-defined]
             except Exception as e:
-                results.append({
-                    'url': url,
-                    'error': str(e),
-                    'verdict': 'ERROR'
-                })
-    
-    # Sort by original order
-    url_order = {url: i for i, url in enumerate(urls)}
-    results.sort(key=lambda r: url_order.get(r['url'], 999))
-    
-    return results
+                yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
 
 
 def _maybe_send_webhook(result: dict, args):
