@@ -14,34 +14,40 @@ class TestEnrichDNS(unittest.TestCase):
     
     @patch('url_reputation.enrich.socket.getaddrinfo')
     def test_basic_a_record(self, mock_getaddrinfo):
-        # Mock A record response
-        mock_getaddrinfo.return_value = [
-            (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('93.184.216.34', 0))
-        ]
-        
-        result = enrich_dns('example.com')
-        
+        # Force socket fallback (dnspython path bypasses socket.getaddrinfo)
+        with patch.dict('sys.modules', {'dns': None}):
+            # Mock A record response
+            mock_getaddrinfo.return_value = [
+                (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('93.184.216.34', 0))
+            ]
+
+            result = enrich_dns('example.com')
+
         self.assertIn('a_records', result)
         self.assertEqual(result['a_records'], ['93.184.216.34'])
     
     @patch('url_reputation.enrich.socket.getaddrinfo')
     def test_multiple_a_records(self, mock_getaddrinfo):
-        mock_getaddrinfo.return_value = [
-            (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('1.1.1.1', 0)),
-            (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('2.2.2.2', 0)),
-        ]
-        
-        result = enrich_dns('example.com')
-        
+        # Force socket fallback (dnspython path bypasses socket.getaddrinfo)
+        with patch.dict('sys.modules', {'dns': None}):
+            mock_getaddrinfo.return_value = [
+                (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('1.1.1.1', 0)),
+                (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('2.2.2.2', 0)),
+            ]
+
+            result = enrich_dns('example.com')
+
         self.assertIn('1.1.1.1', result['a_records'])
         self.assertIn('2.2.2.2', result['a_records'])
     
     @patch('url_reputation.enrich.socket.getaddrinfo')
     def test_no_records(self, mock_getaddrinfo):
-        mock_getaddrinfo.side_effect = socket.gaierror('No address')
-        
-        result = enrich_dns('nonexistent.invalid')
-        
+        # Force socket fallback (dnspython path bypasses socket.getaddrinfo)
+        with patch.dict('sys.modules', {'dns': None}):
+            mock_getaddrinfo.side_effect = socket.gaierror('No address')
+
+            result = enrich_dns('nonexistent.invalid')
+
         self.assertEqual(result['a_records'], [])
     
     def test_returns_expected_structure(self):

@@ -235,13 +235,78 @@ Goal: external providers can be added without editing core.
 
 ---
 
+## Backlog (new tasks)
+
+### Phase 2 — Cache + rate limit + retries (improvements)
+
+#### T12 — Redirect-chain enricher (URL-based)
+- Status: DONE
+- Why: redirects are a strong phishing signal and help analysts understand the *final* destination.
+- Deliverables:
+  - Enricher: `redirects`
+  - Output: `final_url`, `chain[]`, `hops`
+  - Limits: `max_hops`, timeouts; avoid downloading bodies where possible
+- Definition of Done:
+  - `--enrich redirects` works in single-URL mode (uses canonical indicator)
+  - Tests cover basic shape + non-URL skip
+  - Docs updated (`docs/schema-v1.md` / enrichment docs)
+- Notes:
+  - Enrichment framework now supports indicator types (url/domain/ip) so URL-based enrichers can exist.
+  - Added built-in enricher: `redirects` (URL redirect chain + final URL).
+  - Added tests and made DNS enrichment tests deterministic when dnspython is installed.
+
+#### T13 — Provider-specific rate limit parsing (real)
+- Status: TODO
+- Deliverables:
+  - For each built-in provider, parse rate-limit headers/fields into `SourceResultV1.rate_limit`
+  - Retry policy respects `Retry-After` and reset windows when available
+
+### Phase 3 — CLI ergonomics + CI integration (improvements)
+
+#### T14 — Report outputs (markdown + summary)
+- Status: TODO
+- Deliverables:
+  - `--format markdown` (single + batch)
+  - A one-page summary at end of batch runs (worst verdict, counts by verdict, errors)
+
+#### T15 — Batch mode: budget + deterministic ordering option
+- Status: TODO
+- Deliverables:
+  - `--budget-seconds` and/or `--max-requests` to cap work in CI
+  - `--preserve-order` (optional): yield results in input order (buffered)
+
+### Phase 4 — Enrichment & normalization (more)
+
+#### T16 — ASN/Geo enricher (domain/ip)
+- Status: TODO
+- Deliverables:
+  - `--enrich asn` (and optionally `geo`) mapping domain→IP→ASN/org/country
+  - Configurable sources (free-first); keep deps optional
+
+### Phase 5 — Plugins + ecosystem (improvements)
+
+#### T17 — Enricher entrypoints loader + docs
+- Status: TODO
+- Deliverables:
+  - Mirror provider entrypoints: load enrichers from `url_reputation.enrichers`
+  - Docs + minimal example package
+
+### Maintenance / tightening
+
+#### T18 — Tighten mypy (progressively)
+- Status: TODO
+- Deliverables:
+  - Move from informational to enforceable mypy (reduce `ignore_errors=true`)
+  - Fix highest-value type issues first (core library surface)
+
+#### T19 — Unified aggregated scoring rules (explainable)
+- Status: TODO
+- Deliverables:
+  - `risk_score` explanation (`score_breakdown` / `reasons[]`)
+  - Configurable weights per provider and a small set of rules (redirects + domain age, etc.)
+
+---
+
 ## Next task to execute
 
-(Backlog complete up to T11)
-
-When you tell me “sigue”, I will:
-1) implement T6,
-2) run tests,
-3) commit + push,
-4) update this file (mark T2 DONE, add commit refs + notes),
-5) then stop and wait for your next instruction.
+Now executing **T12 — Redirect-chain enricher**.

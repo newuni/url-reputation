@@ -28,7 +28,15 @@ All JSON outputs **must** include `schema_version: "1"`.
     }
   ],
   "enrichment": {
-    "dns": {"a_records": ["93.184.216.34"]}
+    "dns": {"a_records": ["93.184.216.34"]},
+    "redirects": {
+      "final_url": "https://www.example.com/",
+      "hops": 1,
+      "chain": [
+        {"url": "http://example.com", "status": 301, "location": "https://www.example.com/"},
+        {"url": "https://www.example.com/", "status": 200, "location": null}
+      ]
+    }
   }
 }
 ```

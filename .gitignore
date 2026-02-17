@@ -25,6 +25,9 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Python virtualenv
+.venv/
+
 # Credentials (never commit!)
 *.key
 *secrets*
