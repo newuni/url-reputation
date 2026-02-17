@@ -1,5 +1,7 @@
 # Python
 __pycache__/
+
+dist/
 *.py[cod]
 *$py.class
 *.so

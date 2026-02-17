@@ -45,6 +45,11 @@ def main():
         help='Output as JSON'
     )
     parser.add_argument(
+        '--legacy-json',
+        action='store_true',
+        help='Include legacy fields in JSON output (e.g. sources_map)'
+    )
+    parser.add_argument(
         '--timeout', '-t',
         type=int,
         default=30,
@@ -113,6 +118,9 @@ def main():
             result['enrichment'] = enrich(result['domain'], enrich_types, args.timeout)
         
         if args.json:
+            if args.legacy_json:
+                # Provide a legacy map of provider results for older consumers.
+                result['sources_map'] = {s.get('name'): s.get('raw') for s in result.get('sources', [])}
             print(json.dumps(result, indent=2))
         else:
             print_human_readable(result)

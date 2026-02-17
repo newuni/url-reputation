@@ -112,6 +112,23 @@ Goal: external providers can be added without editing core.
   - CLI: new flag `--profile` (ignored if `--sources` is provided).
   - Providers that require API keys are still auto-skipped by registry when missing.
 
+### Maintenance / cleanup (rolling)
+
+#### C0 — Stop tracking build artifacts (dist/)
+- Status: DONE
+- Notes:
+  - Added `dist/` to `.gitignore` and removed old tracked artifacts.
+
+#### C1 — Clean docker-compose.yml (remove obsolete version key)
+- Status: DONE
+- Notes:
+  - Removed compose `version:` header to avoid warnings.
+
+#### C2 — Legacy JSON compatibility switch
+- Status: DONE
+- Notes:
+  - Added `--legacy-json` to include `sources_map` for older consumers.
+
 ### Phase 2 — Cache + rate limit + retries
 
 #### T4 — Local cache layer (sqlite)
