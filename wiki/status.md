@@ -1,0 +1,175 @@
+# url-reputation — Status / Plan (living doc)
+
+> This is a living, transparent roadmap.
+>
+> Working agreement:
+> - We work **task by task**.
+> - When a task is completed, we **update this file** (mark done, add notes, link commits).
+> - Unblocked tasks should be small enough to finish in one iteration.
+> - Prefer backwards-compatible changes; when breaking, document a migration.
+
+## Current snapshot
+
+- Repo: https://github.com/newuni/url-reputation
+- Local path on this host: `/root/clawd/skills/url-reputation`
+- Latest release: **v1.4.1** (Docker healthcheck + dev workflow)
+- Primary focus: **Developer-first unified URL/domain/IP reputation library** (multi-provider “front door”).
+
+## Vision
+
+Provide a single, stable API/CLI that hides the complexity of multiple threat-intel providers (auth, quotas, formats, semantics) and returns a **consistent contract**:
+
+- One input: URL / domain / IP
+- One output schema (versioned)
+- A unified aggregated verdict + score
+- Per-provider results and errors
+- Optional enrichment (DNS, WHOIS, redirects, ASN, etc.)
+- Good ergonomics for CI (exit codes), logs, and batch processing
+
+## Guiding principles
+
+1. **Stable contract > features**: once the output schema is defined, keep it stable.
+2. **Progressive enhancement**: free sources work without keys; paid sources unlock automatically.
+3. **Privacy-aware defaults**: avoid submitting full URLs when a host-only lookup is sufficient.
+4. **Quota-respecting**: provider-specific rate-limits, retries, backoff.
+5. **Composable**: users can pick providers, profiles, cache strategy.
+
+---
+
+## Roadmap (phased)
+
+### Phase 0 — Baseline (done)
+- [x] Docker web image healthcheck fix (curl)
+- [x] Dev workflow via `Dockerfile.dev` + `pytest`
+
+### Phase 1 — Contract + provider architecture (next)
+Goal: define a stable output and refactor to an extensible provider interface.
+
+### Phase 2 — Cache + rate limit + retries
+Goal: reduce cost/latency and be safe with quotas.
+
+### Phase 3 — CLI ergonomics + CI integration
+Goal: make this a drop-in tool for pipelines.
+
+### Phase 4 — Enrichment & normalization
+Goal: better context and fewer false positives.
+
+### Phase 5 — Plugins + ecosystem
+Goal: external providers can be added without editing core.
+
+---
+
+## Task board
+
+### Legend
+- **Status**: `TODO` | `IN_PROGRESS` | `DONE`
+- Each task should include a **Definition of Done** and **Notes**.
+
+### Phase 1 — Contract + provider architecture
+
+#### T1 — Define output schema v1 (URL/domain/IP)
+- Status: TODO
+- Why: All downstream work (cache, CLI, API) depends on a stable contract.
+- Deliverables:
+  - `url_reputation/models.py` (pydantic or dataclasses) with `ResultV1` + `SourceResultV1`
+  - `schema_version: "1"` present in outputs
+  - `ResultV1` includes: `indicator`, `indicator_type`, `canonical`, `verdict`, `risk_score`, `checked_at`, `sources[]`, `enrichment?`, `errors?`
+  - A short `docs/schema-v1.md` (examples)
+- Definition of Done:
+  - CLI `--json` output conforms to the new schema and includes `schema_version`.
+  - Tests updated/added.
+- Notes:
+  - Keep backward compatibility where possible; if fields rename, include aliases.
+
+#### T2 — Provider interface + registry
+- Status: TODO
+- Deliverables:
+  - `url_reputation/providers/base.py` with `Provider` interface
+  - `url_reputation/providers/registry.py` with registration and selection
+  - Move existing sources under providers (wrap existing logic)
+- Definition of Done:
+  - `check_url_reputation()` uses providers via registry
+  - providers can be enabled by name and auto-disabled if missing API key
+
+#### T3 — Profiles (fast / thorough / privacy / free-only)
+- Status: TODO
+- Deliverables:
+  - `url_reputation/profiles.py`
+  - CLI: `--profile fast|thorough|privacy|free`
+- Definition of Done:
+  - Profiles map to provider sets + timeouts + concurrency
+
+### Phase 2 — Cache + rate limit + retries
+
+#### T4 — Local cache layer (sqlite)
+- Status: TODO
+- Deliverables:
+  - `url_reputation/cache.py` (sqlite)
+  - CLI: `--cache`, `--cache-ttl`, `--no-cache`
+  - Cache key based on canonical indicator + provider set + options
+- Definition of Done:
+  - Demonstrable cache hits; tests for TTL and key stability
+
+#### T5 — Provider-specific retries/backoff + concurrency limits
+- Status: TODO
+- Deliverables:
+  - common retry utility with exponential backoff + jitter
+  - provider concurrency limits (per provider + global)
+  - surface rate-limit metadata in `SourceResultV1.rate_limit?`
+- Definition of Done:
+  - 429 handling does not spam; respects reset windows when available
+
+### Phase 3 — CLI ergonomics + CI integration
+
+#### T6 — Exit codes + `--fail-on`
+- Status: TODO
+- Deliverables:
+  - `--fail-on CLEAN|LOW_RISK|MEDIUM_RISK|HIGH_RISK|ERROR`
+  - deterministic exit codes for pipelines
+
+#### T7 — Output formats (pretty/json/ndjson/sarif)
+- Status: TODO
+- Deliverables:
+  - `--format pretty|json|ndjson|sarif`
+  - SARIF for GitHub Code Scanning (optional)
+
+#### T8 — Batch streaming + large files
+- Status: TODO
+- Deliverables:
+  - `--file` supports large lists efficiently
+  - NDJSON streaming mode; progress summaries
+
+### Phase 4 — Enrichment & normalization
+
+#### T9 — Canonicalization and indicator typing
+- Status: TODO
+- Deliverables:
+  - Canonical URL normalization + IDN/punycode
+  - Determine `indicator_type` reliably
+
+#### T10 — Enrichment plugins (dns/whois/redirects/asn)
+- Status: TODO
+- Deliverables:
+  - Enrichment interface similar to providers
+  - Optional based on flags: `--enrich dns,whois,redirects,asn`
+
+### Phase 5 — Plugins + ecosystem
+
+#### T11 — Entry points for external providers
+- Status: TODO
+- Deliverables:
+  - `pyproject.toml` entrypoints
+  - docs: how to publish a provider package
+
+---
+
+## Next task to execute
+
+**T1 — Define output schema v1**
+
+When you tell me “sigue”, I will:
+1) implement T1,
+2) run tests,
+3) commit + push,
+4) update this file (mark T1 DONE, add commit refs + notes),
+5) then stop and wait for your next instruction.
