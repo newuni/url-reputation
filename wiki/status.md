@@ -101,12 +101,16 @@ Goal: external providers can be added without editing core.
   - Tests pass.
 
 #### T3 — Profiles (fast / thorough / privacy / free-only)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `url_reputation/profiles.py`
   - CLI: `--profile fast|thorough|privacy|free`
 - Definition of Done:
   - Profiles map to provider sets + timeouts + concurrency
+- Notes:
+  - Added `url_reputation/profiles.py` with presets: `free`, `fast`, `privacy`, `thorough`.
+  - CLI: new flag `--profile` (ignored if `--sources` is provided).
+  - Providers that require API keys are still auto-skipped by registry when missing.
 
 ### Phase 2 — Cache + rate limit + retries
 
@@ -174,7 +178,7 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-**T3 — Profiles (fast / thorough / privacy / free-only)**
+**T4 — Local cache layer (sqlite)**
 
 When you tell me “sigue”, I will:
 1) implement T2,

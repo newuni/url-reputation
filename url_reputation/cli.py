@@ -34,6 +34,12 @@ def main():
         default=None
     )
     parser.add_argument(
+        '--profile',
+        help='Provider profile preset: free, fast, privacy, thorough (ignored if --sources is set)',
+        choices=['free', 'fast', 'privacy', 'thorough'],
+        default=None
+    )
+    parser.add_argument(
         '--json', '-j',
         action='store_true',
         help='Output as JSON'
@@ -78,7 +84,11 @@ def main():
     if not args.url and not args.file:
         parser.error("Either URL or --file is required")
     
+    from .profiles import get_profile
+
     sources = args.sources.split(',') if args.sources else None
+    if sources is None and args.profile:
+        sources = get_profile(args.profile).providers
     
     # Batch mode: process file
     if args.file:
