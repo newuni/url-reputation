@@ -6,12 +6,11 @@ URL Reputation Checker - CLI entry point
 import argparse
 import json
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .checker import check_url_reputation
-from .webhook import notify_on_risk
 from .enrich import enrich
+from .webhook import notify_on_risk
 
 
 def main():
@@ -54,6 +53,23 @@ def main():
         type=int,
         default=30,
         help='Timeout per source in seconds (default: 30)'
+    )
+    parser.add_argument(
+        '--cache',
+        nargs='?',
+        const='default',
+        default=None,
+        help='Enable sqlite cache (optionally provide path). If set without value, uses default path.'
+    )
+    parser.add_argument(
+        '--cache-ttl',
+        default='24h',
+        help='Cache TTL (e.g. 3600, 10m, 24h, 7d). Default: 24h'
+    )
+    parser.add_argument(
+        '--no-cache',
+        action='store_true',
+        help='Disable cache even if --cache is set'
     )
     parser.add_argument(
         '--workers', '-w',
@@ -110,7 +126,20 @@ def main():
             print_batch_results(results)
     else:
         # Single URL mode
-        result = check_url_reputation(args.url, sources, args.timeout)
+        cache_path = None
+        cache_ttl_seconds = None
+        if args.cache and not args.no_cache:
+            from .cache import default_cache_path, parse_ttl
+            cache_path = default_cache_path() if args.cache == 'default' else args.cache
+            cache_ttl_seconds = parse_ttl(args.cache_ttl)
+
+        result = check_url_reputation(
+            args.url,
+            sources,
+            args.timeout,
+            cache_path=cache_path,
+            cache_ttl_seconds=cache_ttl_seconds,
+        )
         
         # Add enrichment if requested
         if args.enrich:
@@ -151,7 +180,7 @@ def check_urls_from_file(
     """
     # Read URLs from file
     urls = []
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         for line in f:
             line = line.strip()
             # Skip empty lines and comments
@@ -223,13 +252,13 @@ def print_enrichment(enrichment: dict):
     if not enrichment:
         return
     
-    print(f"\n📋 Enrichment Data:")
+    print("\n📋 Enrichment Data:")
     print(f"{'-'*50}")
     
     # DNS
     if 'dns' in enrichment:
         dns = enrichment['dns']
-        print(f"\n🌐 DNS Records:")
+        print("\n🌐 DNS Records:")
         if dns.get('a_records'):
             print(f"  A:     {', '.join(dns['a_records'])}")
         if dns.get('aaaa_records'):
@@ -251,7 +280,7 @@ def print_enrichment(enrichment: dict):
     # Whois
     if 'whois' in enrichment:
         whois = enrichment['whois']
-        print(f"\n📝 Whois:")
+        print("\n📝 Whois:")
         if whois.get('creation_date'):
             age = whois.get('domain_age_days', '?')
             new_badge = ' ⚠️ NEW!' if whois.get('is_new_domain') else ''
@@ -265,14 +294,14 @@ def print_enrichment(enrichment: dict):
     
     # Risk indicators
     if 'risk_indicators' in enrichment:
-        print(f"\n⚠️ Risk Indicators:")
+        print("\n⚠️ Risk Indicators:")
         for indicator in enrichment['risk_indicators']:
             print(f"  • {indicator}")
 
 
 def print_batch_results(results: list):
     """Print batch results in human-readable format."""
-    print(f"\n🔍 URL Reputation Batch Report")
+    print("\n🔍 URL Reputation Batch Report")
     print(f"{'='*60}")
     print(f"Total URLs: {len(results)}")
     
@@ -282,7 +311,7 @@ def print_batch_results(results: list):
         v = r.get('verdict', 'ERROR')
         verdicts[v] = verdicts.get(v, 0) + 1
     
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     verdict_emoji = {
         'CLEAN': '✅',
         'LOW_RISK': '⚠️',
@@ -295,7 +324,7 @@ def print_batch_results(results: list):
         print(f"  {emoji} {verdict}: {count}")
     
     print(f"\n{'='*60}")
-    print(f"📋 Results:")
+    print("📋 Results:")
     print(f"{'-'*60}")
     
     for result in results:
@@ -315,7 +344,7 @@ def print_batch_results(results: list):
 
 def print_human_readable(result: dict):
     """Print human-readable output."""
-    print(f"\n🔍 URL Reputation Report")
+    print("\n🔍 URL Reputation Report")
     print(f"{'='*50}")
     print(f"URL:    {result['url']}")
     print(f"Domain: {result['domain']}")
@@ -331,7 +360,7 @@ def print_human_readable(result: dict):
     print(f"\n{verdict_emoji.get(result['verdict'], '❓')} Verdict: {result['verdict']}")
     print(f"📊 Risk Score: {result['risk_score']}/100")
     
-    print(f"\n📋 Source Results:")
+    print("\n📋 Source Results:")
     print(f"{'-'*50}")
     
     # Schema v1: sources is a list of source results

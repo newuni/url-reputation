@@ -4,9 +4,9 @@ Requires API key (free tier: 10,000 requests/day)
 https://safebrowsing.google.com/
 """
 
-import urllib.request
 import json
 import os
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

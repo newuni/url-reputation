@@ -2,11 +2,11 @@
 Tests for DNS and Whois enrichment.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
 import socket
+import unittest
+from unittest.mock import MagicMock, patch
 
-from url_reputation.enrich import enrich_dns, enrich_whois, enrich
+from url_reputation.enrich import enrich, enrich_dns, enrich_whois
 
 
 class TestEnrichDNS(unittest.TestCase):

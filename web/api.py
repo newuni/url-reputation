@@ -5,15 +5,15 @@ FastAPI backend for the url-reputation checker
 
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel, HttpUrl
 import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 # Add parent to path for url_reputation imports
 sys.path.insert(0, str(Path(__file__).parent.parent))

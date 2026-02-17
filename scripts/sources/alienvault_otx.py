@@ -4,9 +4,9 @@ No API key required for basic lookups (key gives higher rate limits)
 https://otx.alienvault.com/
 """
 
-import urllib.request
 import json
 import os
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

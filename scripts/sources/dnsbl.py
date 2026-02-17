@@ -7,7 +7,6 @@ No API key required
 import socket
 from urllib.parse import urlparse
 
-
 # DNSBL zones to check
 DNSBLS = {
     'spamhaus_dbl': 'dbl.spamhaus.org',

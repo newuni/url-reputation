@@ -4,13 +4,12 @@ This module returns results in the **Schema v1** contract.
 See `docs/schema-v1.md`.
 """
 
-import os
-from datetime import datetime, timezone
-from urllib.parse import urlparse, urlunparse
-from typing import Optional
 import ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 # Load .env file if present
 try:
@@ -23,10 +22,20 @@ try:
 except ImportError:
     pass  # dotenv not installed, rely on environment variables
 
-from .sources import urlhaus, phishtank, dnsbl, virustotal, urlscan, safebrowsing, abuseipdb
-from .sources import alienvault_otx, ipqualityscore, threatfox
-from .models import ResultV1, IndicatorV1, SourceResultV1
-from .providers import Registry, ProviderContext, builtin_providers
+from .models import IndicatorV1, ResultV1, SourceResultV1
+from .providers import ProviderContext, Registry, builtin_providers
+from .sources import (
+    abuseipdb,
+    alienvault_otx,
+    dnsbl,
+    ipqualityscore,
+    phishtank,
+    safebrowsing,
+    threatfox,
+    urlhaus,
+    urlscan,
+    virustotal,
+)
 
 # NOTE: ALL_SOURCES/FREE_SOURCES are kept for backwards-compat/tests.
 ALL_SOURCES = {
@@ -186,7 +195,10 @@ def calculate_risk_score(results: dict) -> tuple[int, str]:
 def check_url_reputation(
     url: str,
     sources: Optional[list[str]] = None,
-    timeout: int = 30
+    timeout: int = 30,
+    *,
+    cache_path: str | None = None,
+    cache_ttl_seconds: int | None = None,
 ) -> dict:
     """Check reputation across multiple sources.
 
@@ -203,6 +215,23 @@ def check_url_reputation(
     providers = registry.select(sources, only_available=True)
     ctx = ProviderContext(timeout=timeout)
 
+    # Cache lookup (opt-in)
+    cache = None
+    cache_key = None
+    ttl = cache_ttl_seconds
+    if cache_path and (ttl is not None):
+        from .cache import Cache, make_cache_key
+
+        cache = Cache(cache_path)
+        cache_key = make_cache_key(
+            schema_version="1",
+            indicator_canonical=indicator.canonical,
+            providers=[p.name for p in providers],
+        )
+        cached = cache.get(cache_key, ttl_seconds=ttl)
+        if cached:
+            return cached
+
     results_map: dict[str, dict] = {}
 
     if providers:
@@ -217,7 +246,7 @@ def check_url_reputation(
                 try:
                     results_map[name] = future.result()
                 except Exception as e:
-                    results_map[name] = {'error': str(e)}
+                    results_map[name] = {"error": str(e)}
 
     risk_score, verdict = calculate_risk_score(results_map)
 
@@ -271,8 +300,12 @@ def check_url_reputation(
 
     # Backwards-compatible convenience fields (non-schema)
     out = result.to_dict()
-    out['url'] = indicator.input
-    out['domain'] = domain
+    out["url"] = indicator.input
+    out["domain"] = domain
+
+    if cache and cache_key:
+        cache.set(cache_key, out)
+
     return out
 
 

@@ -2,9 +2,9 @@
 Tests for individual source modules.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
 import socket
+import unittest
+from unittest.mock import MagicMock, patch
 
 
 class TestDNSBL(unittest.TestCase):
@@ -164,8 +164,9 @@ class TestVirusTotal(unittest.TestCase):
     @patch.dict('os.environ', {'VIRUSTOTAL_API_KEY': 'test-key'})
     @patch('url_reputation.sources.virustotal.urllib.request.urlopen')
     def test_check_with_api_key(self, mock_urlopen):
-        from url_reputation.sources.virustotal import check
         import json
+
+        from url_reputation.sources.virustotal import check
         
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({
@@ -221,8 +222,9 @@ class TestSafeBrowsing(unittest.TestCase):
     @patch.dict('os.environ', {'GOOGLE_SAFEBROWSING_API_KEY': 'test-key'})
     @patch('url_reputation.sources.safebrowsing.urllib.request.urlopen')
     def test_check_clean_url(self, mock_urlopen):
-        from url_reputation.sources.safebrowsing import check
         import json
+
+        from url_reputation.sources.safebrowsing import check
         
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({}).encode()
@@ -237,8 +239,9 @@ class TestSafeBrowsing(unittest.TestCase):
     @patch.dict('os.environ', {'GOOGLE_SAFEBROWSING_API_KEY': 'test-key'})
     @patch('url_reputation.sources.safebrowsing.urllib.request.urlopen')
     def test_check_malicious_url(self, mock_urlopen):
-        from url_reputation.sources.safebrowsing import check
         import json
+
+        from url_reputation.sources.safebrowsing import check
         
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({

@@ -4,10 +4,10 @@ Requires API key (free tier: 5000 requests/month)
 https://www.ipqualityscore.com/
 """
 
-import urllib.request
-import urllib.parse
 import json
 import os
+import urllib.parse
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

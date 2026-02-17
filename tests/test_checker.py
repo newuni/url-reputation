@@ -3,15 +3,14 @@ Tests for the main checker module.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
-import json
+from unittest.mock import patch
 
 from url_reputation.checker import (
-    extract_domain,
+    ALL_SOURCES,
+    FREE_SOURCES,
     calculate_risk_score,
     check_url_reputation,
-    FREE_SOURCES,
-    ALL_SOURCES,
+    extract_domain,
 )
 
 

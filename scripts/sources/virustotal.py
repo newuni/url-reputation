@@ -4,11 +4,11 @@ Requires API key (free tier: 4 requests/minute)
 https://www.virustotal.com/
 """
 
-import urllib.request
-import urllib.parse
-import json
 import base64
+import json
 import os
+import urllib.parse
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

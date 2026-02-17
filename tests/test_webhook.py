@@ -2,18 +2,15 @@
 Tests for webhook functionality.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
-import json
 import time
-import hmac
-import hashlib
+import unittest
+from unittest.mock import MagicMock, patch
 
 from url_reputation.webhook import (
-    send_webhook,
-    notify_on_risk,
-    verify_signature,
     _generate_signature,
+    notify_on_risk,
+    send_webhook,
+    verify_signature,
 )
 
 

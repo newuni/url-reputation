@@ -2,11 +2,10 @@
 Tests for the CLI module.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
-from io import StringIO
-import sys
 import json
+import unittest
+from io import StringIO
+from unittest.mock import patch
 
 from url_reputation.cli import main, print_human_readable
 

@@ -4,10 +4,9 @@ Requires API key (free tier: 5000 requests/day)
 https://urlscan.io/
 """
 
-import urllib.request
 import json
 import os
-import time
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

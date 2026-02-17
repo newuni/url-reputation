@@ -5,19 +5,19 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from .base import Provider, ProviderContext
 from ..sources import (
-    urlhaus,
-    phishtank,
-    dnsbl,
-    virustotal,
-    urlscan,
-    safebrowsing,
     abuseipdb,
     alienvault_otx,
+    dnsbl,
     ipqualityscore,
+    phishtank,
+    safebrowsing,
     threatfox,
+    urlhaus,
+    urlscan,
+    virustotal,
 )
+from .base import Provider, ProviderContext
 
 
 class _FnProvider(Provider):

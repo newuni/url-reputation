@@ -6,14 +6,13 @@ URL Reputation Checker - Multi-source security analysis
 import argparse
 import json
 import os
-import sys
-from datetime import datetime, timezone
-from urllib.parse import urlparse
-from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+from typing import Optional
+from urllib.parse import urlparse
 
 # Import source modules
-from sources import urlhaus, phishtank, dnsbl, virustotal, urlscan, safebrowsing, abuseipdb
+from sources import abuseipdb, dnsbl, phishtank, safebrowsing, urlhaus, urlscan, virustotal
 
 ALL_SOURCES = {
     # Free sources (no API key required)
@@ -199,7 +198,7 @@ def main():
         print(json.dumps(result, indent=2))
     else:
         # Human-readable output
-        print(f"\n🔍 URL Reputation Report")
+        print("\n🔍 URL Reputation Report")
         print(f"{'='*50}")
         print(f"URL:    {result['url']}")
         print(f"Domain: {result['domain']}")
@@ -215,7 +214,7 @@ def main():
         print(f"\n{verdict_emoji.get(result['verdict'], '❓')} Verdict: {result['verdict']}")
         print(f"📊 Risk Score: {result['risk_score']}/100")
         
-        print(f"\n📋 Source Results:")
+        print("\n📋 Source Results:")
         print(f"{'-'*50}")
         
         for source, data in result['sources'].items():

@@ -5,10 +5,10 @@ No API key required
 https://urlhaus.abuse.ch/
 """
 
-import urllib.request
 import json
 import os
 import time
+import urllib.request
 from urllib.parse import urlparse
 
 # Cache settings
@@ -31,7 +31,7 @@ def _load_cache() -> tuple[dict, float]:
         if os.path.exists(CACHE_FILE):
             mtime = os.path.getmtime(CACHE_FILE)
             if time.time() - mtime < CACHE_TTL:
-                with open(CACHE_FILE, 'r') as f:
+                with open(CACHE_FILE) as f:
                     return json.load(f), mtime
     except:
         pass

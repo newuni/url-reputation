@@ -4,11 +4,11 @@ Requires API key (free tier: 1000 requests/day)
 https://www.abuseipdb.com/
 """
 
-import urllib.request
-import urllib.parse
 import json
 import os
 import socket
+import urllib.parse
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

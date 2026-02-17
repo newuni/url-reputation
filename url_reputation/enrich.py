@@ -2,12 +2,10 @@
 Enrichment modules for DNS and Whois data.
 """
 
-import socket
 import re
+import socket
 import subprocess
 from datetime import datetime
-from typing import Optional
-from urllib.parse import urlparse
 
 
 def enrich_dns(domain: str, timeout: int = 10) -> dict:

@@ -4,9 +4,9 @@ Requires Auth-Key (free registration at https://auth.abuse.ch/)
 https://threatfox.abuse.ch/
 """
 
-import urllib.request
 import json
 import os
+import urllib.request
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:

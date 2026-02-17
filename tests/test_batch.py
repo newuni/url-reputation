@@ -2,10 +2,10 @@
 Tests for batch processing functionality.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
-import tempfile
 import os
+import tempfile
+import unittest
+from unittest.mock import patch
 
 from url_reputation.checker import check_urls_batch
 from url_reputation.cli import check_urls_from_file, print_batch_results
