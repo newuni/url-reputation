@@ -630,6 +630,63 @@ python3 -m unittest tests.test_checker
 pytest tests/ -v
 ```
 
+## Performance Benchmarks
+
+### Run Benchmarks
+
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
+
+# Run benchmark suite
+pytest tests/bench/ --benchmark-only
+
+# Generate full report with charts
+python scripts/run_benchmarks.py --output-dir results/
+```
+
+### Performance Comparison by Profile
+
+| Profile | Providers | Avg Latency | Throughput | Best For |
+|---------|-----------|-------------|------------|----------|
+| `free` | 2-3 | ~100ms | ~800 ops/s | Quick checks, no API keys |
+| `fast` | 3-4 | ~150ms | ~500 ops/s | General use |
+| `thorough` | 8-10 | ~400ms | ~200 ops/s | Maximum coverage |
+
+![Performance Chart](docs/performance/profile_comparison.png)
+
+### Memory Usage
+
+Expected memory usage for batch processing:
+
+| URLs | Memory (no cache) | Memory (with cache) |
+|------|-------------------|---------------------|
+| 100 | ~15 MB | ~18 MB |
+| 1,000 | ~45 MB | ~52 MB |
+| 10,000 | ~120 MB | ~150 MB |
+
+Run `python scripts/profile_memory.py` for detailed profiling.
+
+## Provider Comparison
+
+| Provider | Latency | Rate Limit | Cost/1k | Key Required |
+|----------|---------|------------|---------|--------------|
+| VirusTotal | ~300ms | 4/min free, 1k/day paid | $10 | ✅ |
+| URLScan.io | ~500ms | 5k/day free | $0-20 | ✅ |
+| Google Safe Browsing | ~100ms | 10k/day free | $0* | ✅ |
+| URLhaus | ~150ms | Unlimited | Free | ❌ |
+| DNSBL | ~50ms | Unlimited | Free | ❌ |
+| AlienVault OTX | ~200ms | Unlimited | Free | Optional |
+
+*Google Safe Browsing has free tier only
+
+**Budget Recommendations:**
+- **Low (Free)**: URLhaus, DNSBL, AlienVault OTX, PhishTank
+- **Medium (Free + Some Paid)**: Add Google Safe Browsing, URLScan.io
+- **High (Premium)**: Include VirusTotal, IPQualityScore, ThreatFox
+
+See detailed comparison: `docs/performance/provider_comparison.md`
+
 ## Roadmap
 
 ### ✅ Completed

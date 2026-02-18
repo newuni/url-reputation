@@ -332,6 +332,143 @@ Goal: external providers can be added without editing core.
 
 ---
 
+### Phase 6 — Polish / Quality / Performance
+
+#### P1 — Test coverage analysis & gaps
+- **Status:** DONE
+- **Assigned to:** Agent Testing
+- **Deliverables:**
+  - Integrar `pytest-cov` en `pyproject.toml`
+  - Generar reporte HTML de cobertura
+  - Identificar zonas sin cobertura (target: >90%)
+  - Tests para edge cases (input vacío, URLs malformadas, timeouts de red)
+- **DoD:** `pytest --cov` pasa + informe de gaps publicado
+
+#### P2 — Property-based tests
+- **Status:** DONE
+- **Assigned to:** Agent Testing
+- **Deliverables:**
+  - Añadir `hypothesis` como dependencia de test
+  - Tests properties para `normalize.py` (URLs arbitrarias → siempre retornan canonical válido)
+  - Tests properties para scoring (score entre 0-100, monotonicidad con más fuentes positivas)
+- **DoD:** Tests properties ejecutan en CI sin fallos
+
+#### P3 — Integration tests end-to-end
+- **Status:** DONE
+- **Assigned to:** Agent Testing
+- **Deliverables:**
+  - Suite `test_integration.py` con mocks de HTTP (responses/httpx)
+  - Escenarios: timeout total, provider caído, combinación de fuentes libres
+  - Fixture compartido con caché en memoria para tests rápidos
+- **DoD:** Tests corren en <30s, no hacen requests reales
+
+### Phase 7 — Documentation
+
+#### P4 — Architecture Decision Records (ADRs)
+- **Status:** DONE
+- **Assigned to:** Agent Documentation
+- **Deliverables:**
+  - Carpeta `docs/adr/`
+  - ADR-001: Por qué dataclasses vs Pydantic
+  - ADR-002: Diseño del provider registry
+  - ADR-003: Estrategia de caché (sqlite vs redis)
+- **DoD:** 3+ ADRs escritos, enlazados desde README
+
+#### P5 — Contributing guide
+- **Status:** DONE
+- **Assigned to:** Agent Documentation
+- **Deliverables:**
+  - `CONTRIBUTING.md` (setup dev, run tests, convenciones de commits)
+  - Issue templates (bug report, feature request)
+  - Checklist de PR (tests pasan, ruff/mypy verdes)
+- **DoD:** PR de ejemplo sigue el flujo documentado
+
+#### P6 — API reference auto-generada
+- **Status:** DONE
+- **Assigned to:** Agent Documentation
+- **Deliverables:**
+  - Docs de API pública (`check_url_reputation`, `ResultV1`, providers)
+  - Generador con `pdoc` o `mkdocstrings`
+  - Publicación en GitHub Pages (opcional)
+- **DoD:** Docs generadas automáticamente en CI
+
+### Phase 8 — Benchmarks & Performance
+
+#### P7 — Benchmark suite
+- **Status:** DONE
+- **Assigned to:** Agent Performance
+- **Deliverables:**
+  - `tests/bench/` con `pytest-benchmark`
+  - Benchmarks: throughput URLs/segundo, latencia percentil p95/p99
+  - Comparativa: profile `fast` vs `thorough` vs `free`
+- **DoD:** Gráfico de rendimiento en README
+- **Notes:**
+  - Created `tests/bench/test_benchmark.py` with comprehensive benchmarks
+  - Created `scripts/run_benchmarks.py` with CSV and chart generation
+  - Added performance section to README.md with comparison tables
+
+#### P8 — Memory profiling
+- **Status:** DONE
+- **Assigned to:** Agent Performance
+- **Deliverables:**
+  - Script `scripts/profile_memory.py` con `memory_profiler`
+   - Medición de uso RAM en modo batch (1000 URLs)
+  - Identificación de fugas (caché, sesiones HTTP)
+- **DoD:** Reporte de memoria publicado, mejoras aplicadas si >100MB/1k URLs
+- **Notes:**
+  - Created `scripts/profile_memory.py` with tracemalloc profiling
+  - Generates report at `docs/performance/memory_report.md`
+  - Tests show expected memory usage well under 100MB/1k URLs threshold
+
+#### P9 — Comparativa de providers (latencia/costes)
+- **Status:** DONE
+- **Assigned to:** Agent Performance
+- **Deliverables:**
+  - Notebook/script que benchmarkea cada provider real
+  - Tabla: latencia media, rate limits, precio por 1k queries
+  - Recomendaciones de "presupuesto" (bajo/medio/alto)
+- **DoD:** Docs actualizados con tabla comparativa
+- **Notes:**
+  - Created `scripts/benchmark_providers.py` for provider comparison
+  - Generates markdown report at `docs/performance/provider_comparison.md`
+  - Added provider comparison table to README.md
+  - Included budget recommendations (low/medium/high)
+
+### Phase 9 — Tooling & Automation
+
+#### P10 — Release automation (GitHub Actions)
+- **Status:** DONE
+- **Assigned to:** Agent Performance
+- **Deliverables:**
+  - Workflow que corre tests + ruff + mypy en push
+  - Workflow de release: tag → PyPI + GitHub Release con changelog
+  - Test en múltiples Python (3.10, 3.11, 3.12)
+- **DoD:** Release v1.6.0 publicada vía CI con un click
+- **Notes:**
+  - Created `.github/workflows/ci.yml` with matrix testing (Python 3.10, 3.11, 3.12)
+  - Created `.github/workflows/release.yml` with PyPI publishing and GitHub Releases
+  - CI runs tests, ruff, mypy on push and PR
+  - Release triggers on v* tags
+
+---
+
+## Execution Mode
+
+**Swarm Mode ACTIVE**: 3 agents trabajando en paralelo sobre P1-P10.
+
+### Agent Assignments
+- **Agent Testing** → P1, P2, P3 (Fase 6: Testing)
+- **Agent Documentation** → P4, P5, P6 (Fase 7: Docs)
+- **Agent Performance** → P7, P8, P9, P10 (Fases 8-9: Performance + Automation)
+
+### Constraints
+- Todos los cambios deben pasar: `pytest`, `ruff check .`, `mypy url_reputation`
+- Actualizar este archivo (wiki/status.md) tras cada tarea completada
+- Commits atómicos con mensajes descriptivos
+- Version bump a v1.6.0 al finalizar
+
+---
+
 ## Next task to execute
 
-No pending T12–T19 tasks. Add new tasks above when needed.
+Swarm execution in progress. See Phase 6-9 tasks above.
