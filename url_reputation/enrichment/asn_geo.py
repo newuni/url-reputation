@@ -19,7 +19,7 @@ import os
 import socket
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -127,8 +127,9 @@ def _resolve_domain_ips(domain: str, *, timeout: int) -> list[str]:
                 for info in socket.getaddrinfo(domain, None, family):
                     ip = info[4][0]
                     try:
-                        ipaddress.ip_address(ip)
-                        ips.add(ip)
+                        ip_s = str(ip)
+                        ipaddress.ip_address(ip_s)
+                        ips.add(ip_s)
                     except Exception:
                         continue
             except Exception:
@@ -356,14 +357,16 @@ def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], 
     }
 
     # Normalize to JSON-safe primitives.
-    if geo.get("lat") is not None:
+    lat = geo.get("lat")
+    if lat is not None:
         try:
-            geo["lat"] = float(geo["lat"])
+            geo["lat"] = float(cast(Any, lat))
         except Exception:
             geo["lat"] = None
-    if geo.get("lon") is not None:
+    lon = geo.get("lon")
+    if lon is not None:
         try:
-            geo["lon"] = float(geo["lon"])
+            geo["lon"] = float(cast(Any, lon))
         except Exception:
             geo["lon"] = None
 
@@ -502,7 +505,7 @@ class AsnGeoEnricher(Enricher):
                     if (
                         cymru_asn.get("number") is not None
                         and asn.get("number") is not None
-                        and int(cymru_asn.get("number")) != int(asn.get("number"))
+                        and _safe_int(cymru_asn.get("number")) != _safe_int(asn.get("number"))
                     ):
                         notes.append("conflicting_asn_sources_ripe_vs_cymru")
 

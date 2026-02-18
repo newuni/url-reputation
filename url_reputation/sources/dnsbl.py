@@ -5,6 +5,7 @@ No API key required
 """
 
 import socket
+from typing import Any
 from urllib.parse import urlparse
 
 # DNSBL zones to check
@@ -55,7 +56,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
     Returns:
         dict with results from each DNSBL
     """
-    results = {}
+    results: dict[str, dict[str, Any]] = {}
     listed_any = False
     
     # Check domain-based DNSBLs

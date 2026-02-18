@@ -1,8 +1,8 @@
 import unittest
 from datetime import datetime, timezone
 
-from url_reputation.rate_limit import RateLimitInfo, parse_rate_limit_info
 from url_reputation.providers.base import Provider, ProviderContext
+from url_reputation.rate_limit import RateLimitInfo, parse_rate_limit_info
 
 
 class _DummyProvider(Provider):

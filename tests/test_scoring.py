@@ -77,8 +77,8 @@ class TestScoringExplainability(unittest.TestCase):
 
 class TestCheckerOutputExplainability(unittest.TestCase):
     def test_check_url_includes_breakdown_and_reasons(self):
-        from url_reputation.providers import Provider, ProviderContext, Registry
         from url_reputation.checker import check_url_reputation
+        from url_reputation.providers import Provider, ProviderContext, Registry
 
         class _DummyProvider(Provider):
             name = "phishtank"

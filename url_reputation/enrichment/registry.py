@@ -5,9 +5,36 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib import metadata
-from typing import Optional
+from typing import Any, Optional
 
 from .base import Enricher
+
+
+def _iter_entry_points(group: str) -> list[metadata.EntryPoint]:
+    """Return entry points for a group across importlib.metadata API variants."""
+    eps: Any = metadata.entry_points()
+    # Python 3.10+ returns EntryPoints with .select().
+    try:
+        sel = getattr(eps, "select", None)
+        if callable(sel):
+            return list(sel(group=group))
+    except Exception:
+        pass
+
+    # Older variants: dict-like mapping group -> list[EntryPoint]
+    if isinstance(eps, dict):
+        group_eps = eps.get(group, [])
+        return list(group_eps) if isinstance(group_eps, Iterable) else []
+
+    # Fallback: iterable of EntryPoint with .group attribute.
+    out: list[metadata.EntryPoint] = []
+    try:
+        for ep in eps:
+            if getattr(ep, "group", None) == group:
+                out.append(ep)
+    except Exception:
+        return []
+    return out
 
 
 @dataclass
@@ -25,7 +52,7 @@ class EnrichmentRegistry:
         """
         loaded: dict[str, Enricher] = {}
         try:
-            eps = metadata.entry_points(group=group)
+            eps = _iter_entry_points(group)
         except Exception:
             return loaded
 

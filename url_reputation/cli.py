@@ -15,13 +15,13 @@ from typing import Any
 
 from .checker import check_url_reputation
 from .enrichment.service import enrich_indicator  # kept for test/backwards-compat patching
+from .markdown import to_markdown_batch, to_markdown_single
 from .output import (
     exit_code_from_results,
     exit_code_from_verdict,
     to_sarif,
     worst_verdict,
 )
-from .markdown import to_markdown_batch, to_markdown_single
 from .scoring import aggregate_risk_score
 from .webhook import notify_on_risk
 
@@ -357,11 +357,11 @@ def run_batch(
             return (time.monotonic() - start) >= float(budget_seconds)
 
         # Track futures -> (index, url) so we can optionally reorder on output.
-        pending: set[object] = set()
-        meta: dict[object, tuple[int, str]] = {}
+        pending: set[Future[dict[str, Any]]] = set()
+        meta: dict[Future[dict[str, Any]], tuple[int, str]] = {}
 
         next_index = 0  # next input index to yield (preserve_order)
-        buffer: dict[int, dict] = {}
+        buffer: dict[int, dict[str, Any]] = {}
 
         submitted = 0
 
@@ -385,12 +385,12 @@ def run_batch(
                     i, u = meta.pop(d)
                     if preserve_order:
                         try:
-                            buffer[i] = d.result()  # type: ignore[attr-defined]
+                            buffer[i] = d.result()
                         except Exception as e:
                             buffer[i] = {'url': u, 'error': str(e), 'verdict': 'ERROR'}
                     else:
                         try:
-                            yield d.result()  # type: ignore[attr-defined]
+                            yield d.result()
                         except Exception as e:
                             yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
 
@@ -406,12 +406,12 @@ def run_batch(
                 i, u = meta.pop(d)
                 if preserve_order:
                     try:
-                        buffer[i] = d.result()  # type: ignore[attr-defined]
+                        buffer[i] = d.result()
                     except Exception as e:
                         buffer[i] = {'url': u, 'error': str(e), 'verdict': 'ERROR'}
                 else:
                     try:
-                        yield d.result()  # type: ignore[attr-defined]
+                        yield d.result()
                     except Exception as e:
                         yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
 
@@ -509,7 +509,7 @@ def print_batch_results(results: list):
     print(f"Total URLs: {len(results)}")
     
     # Summary counts
-    verdicts = {}
+    verdicts: dict[str, int] = {}
     for r in results:
         v = r.get('verdict', 'ERROR')
         verdicts[v] = verdicts.get(v, 0) + 1

@@ -6,11 +6,11 @@ See `docs/schema-v1.md`.
 
 from __future__ import annotations
 
+import threading
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-import threading
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 # Load .env file if present
@@ -24,7 +24,7 @@ try:
 except ImportError:
     pass  # dotenv not installed, rely on environment variables
 
-from .models import IndicatorV1, RateLimitV1, ResultV1, SourceResultV1, Verdict
+from .models import IndicatorType, IndicatorV1, RateLimitV1, ResultV1, SourceResultV1
 from .providers import Provider, ProviderContext, Registry, builtin_providers
 from .retry import RetryPolicy, retry_call
 from .scoring import aggregate_risk_score
@@ -85,7 +85,12 @@ def canonicalize_indicator(value: str) -> IndicatorV1:
     from .normalize import normalize_indicator
 
     n = normalize_indicator(value)
-    return IndicatorV1(input=n.input, type=n.type, canonical=n.canonical, domain=n.domain)
+    return IndicatorV1(
+        input=n.input,
+        type=cast(IndicatorType, n.type),
+        canonical=n.canonical,
+        domain=n.domain,
+    )
 
 
 def extract_domain(url: str) -> str:

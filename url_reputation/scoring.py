@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
+from .models import Verdict
 
 # Base points for common threat types used by provider rules.
 THREAT_WEIGHTS: dict[str, int] = {
@@ -110,12 +111,12 @@ class ScoreContribution:
 @dataclass(frozen=True)
 class AggregatedScore:
     risk_score: int
-    verdict: str
+    verdict: Verdict
     score_breakdown: list[dict[str, Any]]
     reasons: list[str]
 
 
-def _verdict_from_score(score: int) -> str:
+def _verdict_from_score(score: int) -> Verdict:
     if score <= 20:
         return "CLEAN"
     if score <= 50:
@@ -427,4 +428,3 @@ def aggregate_risk_score(
         score_breakdown=breakdown,
         reasons=reasons,
     )
-

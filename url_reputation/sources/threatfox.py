@@ -7,11 +7,12 @@ https://threatfox.abuse.ch/
 import json
 import os
 import urllib.request
+from typing import Any, Optional
 
 from .http_meta import error_meta, response_meta
 
 
-def check(url: str, domain: str, timeout: int = 30) -> dict:
+def check(url: str, domain: str, timeout: int = 30) -> Optional[dict[str, Any]]:
     """
     Check domain/URL against ThreatFox IOC database.
     
@@ -86,8 +87,10 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
     except Exception as e:
         return {'error': str(e)}
 
+    return None
 
-def check_hash(file_hash: str, timeout: int = 30) -> dict:
+
+def check_hash(file_hash: str, timeout: int = 30) -> dict[str, Any]:
     """Check file hash against ThreatFox."""
     api_url = "https://threatfox-api.abuse.ch/api/v1/"
     
