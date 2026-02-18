@@ -27,7 +27,7 @@ from .scoring import aggregate_risk_score
 from .webhook import notify_on_risk
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Check URL/domain reputation across multiple security sources"
     )
@@ -406,7 +406,7 @@ def run_batch(
                     next_index += 1
 
 
-def _maybe_send_webhook(result: dict, args):
+def _maybe_send_webhook(result: dict[str, Any], args: argparse.Namespace) -> None:
     """Send webhook notification if configured and criteria met."""
     webhook_url = args.webhook or os.getenv("WEBHOOK_URL")
     if not webhook_url:
@@ -435,7 +435,7 @@ def _maybe_send_webhook(result: dict, args):
             print(f"\n⚠️ Webhook failed: {response.get('error')}")
 
 
-def print_enrichment(enrichment: dict):
+def print_enrichment(enrichment: dict[str, Any]) -> None:
     """Print enrichment data in human-readable format."""
     if not enrichment:
         return
@@ -487,7 +487,7 @@ def print_enrichment(enrichment: dict):
             print(f"  • {indicator}")
 
 
-def print_batch_results(results: list):
+def print_batch_results(results: list[dict[str, Any]]) -> None:
     """Print batch results in human-readable format."""
     print("\n🔍 URL Reputation Batch Report")
     print(f"{'=' * 60}")
@@ -530,7 +530,7 @@ def print_batch_results(results: list):
     print()
 
 
-def print_human_readable(result: dict):
+def print_human_readable(result: dict[str, Any]) -> None:
     """Print human-readable output."""
     print("\n🔍 URL Reputation Report")
     print(f"{'=' * 50}")

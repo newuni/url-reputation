@@ -69,7 +69,7 @@ def _fetch_redirect(url: str, *, timeout: int) -> tuple[int, Optional[str]]:
     # We do not let urllib follow redirects. If a redirect happens, urlopen will
     # raise HTTPError (subclass of URLError) which still contains headers.
 
-    def _do(method: str):
+    def _do(method: str) -> Any:
         req = Request(url, method=method, headers={"User-Agent": "url-reputation/redirects"})
         return urlopen(req, timeout=timeout)
 

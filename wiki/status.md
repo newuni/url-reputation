@@ -532,22 +532,37 @@ Execution strategy agreed with owner: **blocks of 2** tasks.
   - Add explicit chaining (`raise ... from e`) where needed
 - **DoD:** `ruff check .` green with `B904` enforced
 
-### Validation (after Q1-Q4)
+### Block C (done)
+
+#### Q5 — mypy: enable `disallow_untyped_defs`
+- **Status:** DONE
+- **Deliverables:**
+  - `disallow_untyped_defs = true` in `pyproject.toml`
+  - Add explicit annotations to remaining untyped defs in CLI and enrichers
+- **DoD:** `mypy url_reputation` green
+
+#### Q6 — mypy: enable `strict_equality`
+- **Status:** DONE
+- **Deliverables:**
+  - `strict_equality = true` in `pyproject.toml`
+  - Keep runtime behavior unchanged while satisfying stricter checks
+- **DoD:** `mypy url_reputation` green with strict equality enabled
+
+### Validation (after Q1-Q6)
 - `ruff check .` ✅
 - `mypy url_reputation` ✅
 - `pytest tests/` ✅ (146 passed)
 
 ### Commits
 - `16124a2` — chore(quality): tighten mypy + ruff levels (steps 1-4)
+- `d09970a` — chore(quality): enable mypy disallow_untyped_defs + strict_equality
 
 ---
 
 ## Next task to execute
 
-**COMPLETED** — Q1-Q4 done in two blocks.
+**COMPLETED** — Q1-Q6 done in blocks of 2.
 
 Future hardening (optional):
-- `disallow_untyped_defs = true`
-- `strict_equality = true`
 - Add Ruff families incrementally (`UP`, `SIM`, `RET`, `C4`)
 - Enforce coverage floor in CI (`--cov-fail-under` progressive)

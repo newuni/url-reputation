@@ -158,7 +158,7 @@ def _sort_ips(ips: list[str]) -> list[str]:
             continue
 
     # Within each IP version, sort by packed bytes for deterministic ordering.
-    def _key(t: tuple[int, str]):
+    def _key(t: tuple[int, str]) -> tuple[int, bytes]:
         v, s = t
         try:
             return (v, ipaddress.ip_address(s).packed)
