@@ -4,11 +4,12 @@ Tests for batch processing functionality.
 
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 from url_reputation.checker import check_urls_batch
-from url_reputation.cli import check_urls_from_file, print_batch_results
+from url_reputation.cli import check_urls_from_file, print_batch_results, run_batch
 
 
 class TestCheckUrlsBatch(unittest.TestCase):
@@ -185,6 +186,107 @@ class TestPrintBatchResults(unittest.TestCase):
         
         self.assertIn('ERROR', output)
         self.assertIn('Network error', output)
+
+
+class TestRunBatch(unittest.TestCase):
+    """Tests for streaming batch runner (offline, mocked)."""
+
+    @patch('url_reputation.cli.check_url_reputation')
+    def test_run_batch_streams_as_completed_by_default(self, mock_check):
+        def fake_check(url, *_args, **_kwargs):
+            # Make the first URL slow so it should not be yielded first when streaming.
+            if url.endswith('/slow'):
+                time.sleep(0.05)
+            return {'url': url, 'verdict': 'CLEAN', 'risk_score': 0, 'domain': 'example.com', 'sources': []}
+
+        mock_check.side_effect = fake_check
+
+        urls = ['https://example.com/slow', 'https://example.com/fast1', 'https://example.com/fast2']
+        results = list(
+            run_batch(
+                iter(urls),
+                sources=None,
+                timeout=1,
+                max_workers=3,
+                cache=None,
+                cache_ttl='24h',
+                no_cache=True,
+            )
+        )
+
+        self.assertEqual(len(results), 3)
+        self.assertNotEqual(results[0]['url'], urls[0])
+
+    @patch('url_reputation.cli.check_url_reputation')
+    def test_run_batch_preserve_order(self, mock_check):
+        def fake_check(url, *_args, **_kwargs):
+            if url.endswith('/slow'):
+                time.sleep(0.05)
+            return {'url': url, 'verdict': 'CLEAN', 'risk_score': 0, 'domain': 'example.com', 'sources': []}
+
+        mock_check.side_effect = fake_check
+
+        urls = ['https://example.com/slow', 'https://example.com/fast1', 'https://example.com/fast2']
+        results = list(
+            run_batch(
+                iter(urls),
+                sources=None,
+                timeout=1,
+                max_workers=3,
+                cache=None,
+                cache_ttl='24h',
+                no_cache=True,
+                preserve_order=True,
+            )
+        )
+
+        self.assertEqual([r['url'] for r in results], urls)
+
+    @patch('url_reputation.cli.check_url_reputation')
+    def test_run_batch_max_requests_caps_work(self, mock_check):
+        mock_check.return_value = {'url': 'x', 'verdict': 'CLEAN', 'risk_score': 0, 'domain': 'example.com', 'sources': []}
+
+        urls = [f'https://example.com/{i}' for i in range(5)]
+        results = list(
+            run_batch(
+                iter(urls),
+                sources=None,
+                timeout=1,
+                max_workers=2,
+                cache=None,
+                cache_ttl='24h',
+                no_cache=True,
+                max_requests=2,
+            )
+        )
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(mock_check.call_count, 2)
+
+    @patch('url_reputation.cli.check_url_reputation')
+    def test_run_batch_budget_seconds_caps_submissions(self, mock_check):
+        mock_check.return_value = {'url': 'x', 'verdict': 'CLEAN', 'risk_score': 0, 'domain': 'example.com', 'sources': []}
+
+        def slow_iter():
+            yield 'https://example.com/1'
+            time.sleep(0.05)  # ensure budget expires before the next item is submitted
+            yield 'https://example.com/2'
+
+        results = list(
+            run_batch(
+                slow_iter(),
+                sources=None,
+                timeout=1,
+                max_workers=2,
+                cache=None,
+                cache_ttl='24h',
+                no_cache=True,
+                budget_seconds=0.01,
+            )
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(mock_check.call_count, 1)
 
 
 if __name__ == '__main__':

@@ -277,10 +277,12 @@ Goal: external providers can be added without editing core.
   - Commit: `2c45aa0` (feat: markdown report output + batch summary (T14))
 
 #### T15 — Batch mode: budget + deterministic ordering option
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--budget-seconds` and/or `--max-requests` to cap work in CI
   - `--preserve-order` (optional): yield results in input order (buffered)
+- Notes:
+  - Commit: `98edd6f` — feat: batch budgeting + preserve-order (T15)
 
 ### Phase 4 — Enrichment & normalization (more)
 
