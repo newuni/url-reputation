@@ -24,9 +24,14 @@ class TestExitCodes(unittest.TestCase):
             "sources": [],
         }
 
-        with patch(
-            "sys.argv", ["url-reputation", "https://x", "--format", "json", "--fail-on", "LOW_RISK"]
-        ), patch("sys.stdout", new=StringIO()), self.assertRaises(SystemExit) as ctx:
+        with (
+            patch(
+                "sys.argv",
+                ["url-reputation", "https://x", "--format", "json", "--fail-on", "LOW_RISK"],
+            ),
+            patch("sys.stdout", new=StringIO()),
+            self.assertRaises(SystemExit) as ctx,
+        ):
             main()
 
         self.assertEqual(ctx.exception.code, 1)
@@ -49,9 +54,11 @@ class TestExitCodes(unittest.TestCase):
             "sources": [],
         }
 
-        with patch("sys.argv", ["url-reputation", "https://x", "--format", "json"]), patch(
-            "sys.stdout", new=StringIO()
-        ), self.assertRaises(SystemExit) as ctx:
+        with (
+            patch("sys.argv", ["url-reputation", "https://x", "--format", "json"]),
+            patch("sys.stdout", new=StringIO()),
+            self.assertRaises(SystemExit) as ctx,
+        ):
             main()
 
         self.assertEqual(ctx.exception.code, 0)

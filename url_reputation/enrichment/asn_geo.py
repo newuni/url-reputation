@@ -377,9 +377,7 @@ def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[dict[str, Any] | None, str
     return geo, None
 
 
-def _coverage(
-    ips: list[str], asn: dict[str, Any] | None, geo: dict[str, Any] | None
-) -> list[str]:
+def _coverage(ips: list[str], asn: dict[str, Any] | None, geo: dict[str, Any] | None) -> list[str]:
     cov: list[str] = []
     if ips:
         cov.append("ips")
