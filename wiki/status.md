@@ -120,7 +120,7 @@ Goal: external providers can be added without editing core.
   - Added Ruff (lint rules) + mypy (type checking) configuration in `pyproject.toml` and docs in `docs/static-analysis.md`.
   - Applied Ruff safe auto-fixes.
   - Ruff status: `ruff check .` passes (we exclude legacy `scripts/**` and ignore E501/E722/B904 initially; tighten later).
-  - mypy status: `mypy url_reputation` passes in informational mode (`ignore_errors=true` for initial adoption; tighten later).
+  - mypy status: `mypy url_reputation` baseline is enforced (no global `ignore_errors=true`; tighten options gradually).
 
 #### C0 — Stop tracking build artifacts (dist/)
 - Status: DONE

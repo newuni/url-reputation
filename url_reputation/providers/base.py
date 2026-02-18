@@ -53,9 +53,16 @@ class Provider:
         http = payload.get("_http")
         if not isinstance(http, dict):
             return None
-        headers = http.get("headers")
-        if not isinstance(headers, dict):
+        headers_any = http.get("headers")
+        if not isinstance(headers_any, dict):
             return None
+
+        # Coerce to a Mapping[str, str] for parsing (and for mypy).
+        headers: dict[str, str] = {}
+        for k, v in headers_any.items():
+            if k is None or v is None:
+                continue
+            headers[str(k)] = str(v)
 
         info = parse_rate_limit_info(self.name, headers)
         return info.to_public_dict() if info else None

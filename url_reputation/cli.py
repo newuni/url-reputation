@@ -3,10 +3,14 @@
 URL Reputation Checker - CLI entry point
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Iterable, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Any
 
 from .checker import check_url_reputation
 from .enrichment.service import enrich_indicator
@@ -223,7 +227,7 @@ def main():
     raise SystemExit(exit_code)
 
 
-def iter_urls_from_file(filepath: str):
+def iter_urls_from_file(filepath: str) -> Iterator[str]:
     """Yield URLs from a file (streaming).
 
     Skips empty lines and comments.
@@ -237,10 +241,10 @@ def iter_urls_from_file(filepath: str):
 
 def check_urls_from_file(
     filepath: str,
-    sources: list | None = None,
+    sources: list[str] | None = None,
     timeout: int = 30,
     max_workers: int = 5,
-):
+) -> list[dict[str, Any]]:
     """Backward-compatible wrapper: returns a list.
 
     Note: for large files prefer streaming via `iter_urls_from_file()` + `run_batch()`.
@@ -261,15 +265,15 @@ def check_urls_from_file(
 
 
 def run_batch(
-    urls_iter,
+    urls_iter: Iterable[str],
     *,
-    sources: list | None,
+    sources: list[str] | None,
     timeout: int,
     max_workers: int,
     cache: str | None,
     cache_ttl: str,
     no_cache: bool,
-):
+) -> Iterator[dict[str, Any]]:
     """Run batch checks with bounded in-flight tasks.
 
     This avoids loading huge files into memory.
@@ -289,7 +293,7 @@ def run_batch(
 
     max_in_flight = max_workers * 3
 
-    def submit(executor, url):
+    def submit(executor: ThreadPoolExecutor, url: str) -> Future[dict[str, Any]]:
         return executor.submit(
             check_url_reputation,
             url,
@@ -300,7 +304,7 @@ def run_batch(
         )
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        pending: list[tuple[str, object]] = []
+        pending: list[tuple[str, Future[dict[str, Any]]]] = []
 
         for url in urls_iter:
             pending.append((url, submit(executor, url)))
@@ -308,13 +312,13 @@ def run_batch(
             if len(pending) >= max_in_flight:
                 u, fut = pending.pop(0)
                 try:
-                    yield fut.result()  # type: ignore[attr-defined]
+                    yield fut.result()
                 except Exception as e:
                     yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
 
         for u, fut in pending:
             try:
-                yield fut.result()  # type: ignore[attr-defined]
+                yield fut.result()
             except Exception as e:
                 yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
 

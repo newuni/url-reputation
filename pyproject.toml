@@ -65,8 +65,7 @@ warn_unused_ignores = true
 no_implicit_optional = false
 check_untyped_defs = false
 ignore_missing_imports = true
-# Initial adoption: treat mypy as informational; tighten over time.
-ignore_errors = true
+# Enforceable baseline: avoid global error suppression; tighten options over time.
 
 [project.urls]
 Homepage = "https://github.com/newuni/url-reputation"
