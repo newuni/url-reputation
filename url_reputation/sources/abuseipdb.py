@@ -9,6 +9,7 @@ import os
 import socket
 import urllib.parse
 import urllib.request
+from typing import Optional
 
 from .http_meta import error_meta, response_meta
 
@@ -75,7 +76,11 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
 
 
 def report_ip(
-    ip: str, categories: list[int], comment: str, api_key: str = None, timeout: int = 30
+    ip: str,
+    categories: list[int],
+    comment: str,
+    api_key: Optional[str] = None,
+    timeout: int = 30,
 ) -> dict:
     """
     Report an IP address to AbuseIPDB.

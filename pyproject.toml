@@ -69,8 +69,8 @@ ignore = [
 python_version = "3.9"
 warn_return_any = false
 warn_unused_ignores = true
-# Initial adoption: do not fail on legacy implicit-optional patterns.
-no_implicit_optional = false
+# Tightened level: require explicit Optional[...] for None defaults.
+no_implicit_optional = true
 check_untyped_defs = false
 ignore_missing_imports = true
 # Enforceable baseline: avoid global error suppression; tighten options over time.
