@@ -496,12 +496,58 @@ All P1-P10 tasks implemented by swarm of 3 agents:
 
 ---
 
+## Phase 10 — Static Analysis Hardening (incremental)
+
+Execution strategy agreed with owner: **blocks of 2** tasks.
+
+### Block A (done)
+
+#### Q1 — mypy: enable `check_untyped_defs`
+- **Status:** DONE
+- **Deliverables:**
+  - `check_untyped_defs = true` in `pyproject.toml`
+  - Type fixes in CLI typing flow (`IndicatorType` + mapped source payload typing)
+- **DoD:** `mypy url_reputation` green
+
+#### Q2 — mypy: enable `warn_return_any`
+- **Status:** DONE
+- **Deliverables:**
+  - `warn_return_any = true` in `pyproject.toml`
+  - Harden return typing in cache/provider/enricher wrappers and JSON decode paths
+- **DoD:** `mypy url_reputation` green
+
+### Block B (done)
+
+#### Q3 — Ruff: stop ignoring `E722` (bare except)
+- **Status:** DONE
+- **Deliverables:**
+  - Remove `E722` from ignore list
+  - Replace `except:` with `except Exception:` in legacy modules
+- **DoD:** `ruff check .` green with `E722` enforced
+
+#### Q4 — Ruff: stop ignoring `B904` (exception chaining)
+- **Status:** DONE
+- **Deliverables:**
+  - Remove `B904` from ignore list
+  - Add explicit chaining (`raise ... from e`) where needed
+- **DoD:** `ruff check .` green with `B904` enforced
+
+### Validation (after Q1-Q4)
+- `ruff check .` ✅
+- `mypy url_reputation` ✅
+- `pytest tests/` ✅ (146 passed)
+
+### Commits
+- `16124a2` — chore(quality): tighten mypy + ruff levels (steps 1-4)
+
+---
+
 ## Next task to execute
 
-**COMPLETED** — See Phase 6-9 tasks above (all DONE).
+**COMPLETED** — Q1-Q4 done in two blocks.
 
-Future work (optional):
-- Expand benchmark suite with real provider measurements
-- Add more enrichment sources (TLS cert analysis, screenshot analysis)
-- Plugin marketplace/registry
-- Distributed caching (Redis) for multi-node deployments
+Future hardening (optional):
+- `disallow_untyped_defs = true`
+- `strict_equality = true`
+- Add Ruff families incrementally (`UP`, `SIM`, `RET`, `C4`)
+- Enforce coverage floor in CI (`--cov-fail-under` progressive)
