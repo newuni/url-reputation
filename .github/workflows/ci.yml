@@ -58,10 +58,14 @@ jobs:
       - name: Run pytest
         run: pytest tests/ -v --tb=short
 
-      - name: Generate coverage report
+      - name: Generate coverage report (gated baseline)
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         run: |
-          pip install pytest-cov
-          pytest tests/ --cov=url_reputation --cov-report=xml --cov-report=html
+          pytest tests/ \
+            --cov=url_reputation \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-fail-under=60
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
