@@ -24,6 +24,7 @@ except ImportError:
 from .models import IndicatorV1, RateLimitV1, ResultV1, SourceResultV1
 from .providers import ProviderContext, Registry, builtin_providers
 from .retry import RetryPolicy, retry_call
+from .scoring import aggregate_risk_score
 from .sources import (
     abuseipdb,
     alienvault_otx,
@@ -94,70 +95,14 @@ def extract_domain(url: str) -> str:
 
 
 def calculate_risk_score(results: dict) -> tuple[int, str]:
-    """Calculate aggregated risk score from all source results."""
-    score = 0
-    
-    for source, data in results.items():
-        if data.get('error'):
-            continue
-            
-        if source == 'virustotal' and data.get('detected', 0) > 0:
-            ratio = data['detected'] / max(data.get('total', 70), 1)
-            score += int(ratio * 50)
-            
-        elif source == 'urlhaus' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('malware', 30)
-            
-        elif source == 'phishtank' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('phishing', 35)
-            
-        elif source in ('spamhaus_dbl', 'surbl') and data.get('listed'):
-            score += THREAT_WEIGHTS.get('spam', 20)
-            
-        elif source == 'dnsbl' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('spam', 20)
-            
-        elif source == 'safebrowsing' and data.get('threats'):
-            score += THREAT_WEIGHTS.get('malware', 35)
-            
-        elif source == 'abuseipdb' and data.get('abuse_score', 0) > 50:
-            score += int(data['abuse_score'] * 0.4)
-            
-        elif source == 'urlscan' and data.get('malicious'):
-            score += THREAT_WEIGHTS.get('suspicious', 25)
-            
-        elif source == 'alienvault_otx':
-            # OTX: pulses indicate threat intel reports
-            if data.get('has_pulses') and not data.get('is_whitelisted'):
-                pulse_count = data.get('pulse_count', 0)
-                if pulse_count >= 5:
-                    score += THREAT_WEIGHTS.get('malware', 30)
-                elif pulse_count >= 1:
-                    score += THREAT_WEIGHTS.get('suspicious', 15)
-                    
-        elif source == 'threatfox' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('malware', 40)
-            
-        elif source == 'ipqualityscore':
-            if data.get('malware'):
-                score += THREAT_WEIGHTS.get('malware', 40)
-            elif data.get('phishing'):
-                score += THREAT_WEIGHTS.get('phishing', 35)
-            elif data.get('suspicious') or data.get('risk_score', 0) >= 75:
-                score += THREAT_WEIGHTS.get('suspicious', 20)
-    
-    score = min(score, 100)
-    
-    if score <= 20:
-        verdict = 'CLEAN'
-    elif score <= 50:
-        verdict = 'LOW_RISK'
-    elif score <= 75:
-        verdict = 'MEDIUM_RISK'
-    else:
-        verdict = 'HIGH_RISK'
-    
-    return score, verdict
+    """Calculate aggregated risk score from all source results.
+
+    Backwards-compatible wrapper returning (risk_score, verdict).
+    For explainability, use `url_reputation.scoring.aggregate_risk_score`.
+    """
+
+    agg = aggregate_risk_score(results)
+    return agg.risk_score, agg.verdict
 
 
 def check_url_reputation(
@@ -167,6 +112,7 @@ def check_url_reputation(
     *,
     cache_path: str | None = None,
     cache_ttl_seconds: int | None = None,
+    enrichment_types: Optional[list[str]] = None,
 ) -> dict:
     """Check reputation across multiple sources.
 
@@ -198,6 +144,9 @@ def check_url_reputation(
         )
         cached = cache.get(cache_key, ttl_seconds=ttl)
         if cached:
+            # Additive fields introduced in newer schema v1 revisions (T19).
+            cached.setdefault("score_breakdown", [])
+            cached.setdefault("reasons", [])
             return cached
 
     results_map: dict[str, dict] = {}
@@ -244,7 +193,23 @@ def check_url_reputation(
                 except Exception as e:
                     results_map[name] = {"error": str(e)}
 
-    risk_score, verdict = calculate_risk_score(results_map)
+    # Optional enrichment (e.g., redirects, whois domain age) can contribute to score.
+    enrichment = None
+    if enrichment_types:
+        try:
+            from .enrichment.service import enrich_indicator
+
+            enrichment = enrich_indicator(
+                str(indicator.canonical),
+                indicator_type=indicator.type,
+                types=enrichment_types,
+                timeout=timeout,
+            )
+        except Exception as e:
+            enrichment = {"error": str(e)}
+
+    agg = aggregate_risk_score(results_map, enrichment=enrichment)
+    risk_score, verdict = agg.risk_score, agg.verdict
 
     sources_list: list[SourceResultV1] = []
     for p in providers:
@@ -311,13 +276,16 @@ def check_url_reputation(
         risk_score=risk_score,
         checked_at=checked_at,
         sources=sources_list,
-        enrichment=None,
+        enrichment=enrichment,
     )
 
     # Backwards-compatible convenience fields (non-schema)
     out = result.to_dict()
     out["url"] = indicator.input
     out["domain"] = domain
+    # Additive explainability fields (T19).
+    out["score_breakdown"] = agg.score_breakdown
+    out["reasons"] = agg.reasons
 
     if cache and cache_key:
         cache.set(cache_key, out)
