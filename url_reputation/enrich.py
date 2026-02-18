@@ -88,14 +88,14 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
         try:
             socket.setdefaulttimeout(timeout)
             result["a_records"] = list(
-                set(info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET))
+                {info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET)}
             )
         except Exception:
             pass
 
         with contextlib.suppress(Exception):
             result["aaaa_records"] = list(
-                set(info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET6))
+                {info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET6)}
             )
 
     # Add IP geolocation for first A record

@@ -627,20 +627,20 @@ Future hardening (optional):
 
 Execution mode: continue in blocks, but run multiple blocks per cycle when safe.
 
-### Block H (proposed)
+### Block H (done)
 
 #### Q13 — Ruff: add `RET` family (returns)
-- **Status:** TODO
+- **Status:** DONE
 - **Deliverables:**
-  - Add `RET` to Ruff `select`
-  - Apply safe fixes and resolve remaining findings with minimal behavior changes
+  - Added `RET` to Ruff `select`
+  - Applied fixes and small refactors keeping behavior unchanged
 - **DoD:** `ruff check .` green with `RET` enabled
 
 #### Q14 — Ruff: add `C4` family (comprehensions)
-- **Status:** TODO
+- **Status:** DONE
 - **Deliverables:**
-  - Add `C4` to Ruff `select`
-  - Refactor only where readability is preserved
+  - Added `C4` to Ruff `select`
+  - Refactored comprehensions where suggested and readable
 - **DoD:** `ruff check .` green with `C4` enabled
 
 ### Block I (proposed)

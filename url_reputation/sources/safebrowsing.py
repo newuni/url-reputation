@@ -66,7 +66,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
 
             return {
                 "threats": threats,
-                "threat_types": list(set(m["type"] for m in threats)),
+                "threat_types": list({m["type"] for m in threats}),
                 "_http": http,
             }
 

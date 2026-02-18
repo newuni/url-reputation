@@ -53,7 +53,7 @@ exclude = ["scripts/**"]
 
 [tool.ruff.lint]
 # Keep this set tight; we can expand over time.
-select = ["E", "F", "I", "B", "UP", "SIM"]
+select = ["E", "F", "I", "B", "UP", "SIM", "RET", "C4"]
 # Initial adoption: ignore a few noisy / legacy patterns; we will tighten later.
 ignore = [
   "E501",   # line length

@@ -86,8 +86,7 @@ def test_throughput_single_url(benchmark):
     """Benchmark throughput for single URL check."""
 
     async def check_single():
-        result = {"verdict": "CLEAN", "risk_score": 0}
-        return result
+        return {"verdict": "CLEAN", "risk_score": 0}
 
     # Use a wrapper that creates a new coroutine each time
     def run_check():

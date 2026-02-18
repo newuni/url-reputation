@@ -23,8 +23,7 @@ def _extract_domain(url: str) -> str:
     parsed = urlparse(url)
     domain = parsed.netloc or parsed.path.split("/")[0]
     # Remove port if present
-    domain = domain.split(":")[0]
-    return domain
+    return domain.split(":")[0]
 
 
 def _reverse_ip(ip: str) -> str:

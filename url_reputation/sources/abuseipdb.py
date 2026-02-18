@@ -68,7 +68,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
     except urllib.error.HTTPError as e:
         if e.code == 401:
             return {"error": "Invalid API key", "_http": error_meta(e)}
-        elif e.code == 429:
+        if e.code == 429:
             return {"error": "Rate limited - daily limit exceeded", "_http": error_meta(e)}
         return {"error": f"HTTP {e.code}: {e.reason}", "_http": error_meta(e)}
     except Exception as e:

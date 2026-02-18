@@ -63,9 +63,9 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
         if e.code == 404:
             # URL not in database, submit for scanning
             return _submit_url(url, api_key, timeout)
-        elif e.code == 401:
+        if e.code == 401:
             return {"error": "Invalid API key", "_http": error_meta(e)}
-        elif e.code == 429:
+        if e.code == 429:
             return {"error": "Rate limited - wait before retrying", "_http": error_meta(e)}
         return {"error": f"HTTP {e.code}: {e.reason}", "_http": error_meta(e)}
     except Exception as e:
