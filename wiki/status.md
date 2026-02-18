@@ -306,10 +306,14 @@ Goal: external providers can be added without editing core.
 ### Maintenance / tightening
 
 #### T18 — Tighten mypy (progressively)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Move from informational to enforceable mypy (reduce `ignore_errors=true`)
   - Fix highest-value type issues first (core library surface)
+- Notes:
+  - Removed global `ignore_errors=true` and tightened types in core surfaces (checker/CLI/providers).
+  - Eliminated legacy `type: ignore[...]` markers by fixing underlying typing.
+  - Commit: `ea420cb` (chore: tighten mypy baseline (T18))
 
 #### T19 — Unified aggregated scoring rules (explainable)
 - Status: TODO
