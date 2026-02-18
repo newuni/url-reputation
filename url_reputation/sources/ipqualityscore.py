@@ -9,6 +9,8 @@ import os
 import urllib.parse
 import urllib.request
 
+from .http_meta import error_meta, response_meta
+
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
@@ -31,10 +33,11 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
         req.add_header('User-Agent', 'url-reputation-checker/1.0')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         if not result.get('success', False):
-            return {'error': result.get('message', 'API error')}
+            return {'error': result.get('message', 'API error'), '_http': http}
         
         return {
             'risk_score': result.get('risk_score', 0),
@@ -49,11 +52,12 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             'dns_valid': result.get('dns_valid', True),
             'category': result.get('category'),
             'domain_age': result.get('domain_age', {}).get('human'),
+            '_http': http,
         }
         
     except urllib.error.HTTPError as e:
         if e.code == 402:
-            return {'error': 'API quota exceeded'}
-        return {'error': f'HTTP {e.code}'}
+            return {'error': 'API quota exceeded', '_http': error_meta(e)}
+        return {'error': f'HTTP {e.code}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}

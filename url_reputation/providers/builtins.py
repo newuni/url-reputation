@@ -41,7 +41,7 @@ def builtin_providers() -> dict[str, Provider]:
     # Built-ins merged with entrypoint providers
     from .registry import Registry
 
-    providers = {
+    providers: dict[str, Provider] = {
         # Free sources
         'urlhaus': _FnProvider('urlhaus', urlhaus.check, max_concurrency=10),
         'phishtank': _FnProvider('phishtank', phishtank.check, max_concurrency=10),

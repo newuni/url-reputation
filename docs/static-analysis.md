@@ -19,4 +19,5 @@ docker run --rm url-reputation-dev mypy url_reputation
 ## Notes
 
 - We keep the configuration in `pyproject.toml`.
+- The mypy baseline is enforced (no global `ignore_errors=true`).
 - Start strictness low, then tighten gradually as we add types.

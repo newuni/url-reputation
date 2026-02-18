@@ -207,6 +207,38 @@ class TestCLIMain(unittest.TestCase):
         call_args = mock_check.call_args
         self.assertEqual(call_args[0][2], 60)
 
+    @patch('url_reputation.cli.enrich_indicator')
+    @patch('url_reputation.cli.check_url_reputation')
+    def test_enrich_asn_geo_invokes_enrichment(self, mock_check, mock_enrich):
+        mock_check.return_value = {
+            'schema_version': '1',
+            'indicator': {
+                'input': '1.2.3.4',
+                'type': 'ip',
+                'canonical': '1.2.3.4',
+                'domain': None,
+            },
+            'url': '1.2.3.4',
+            'domain': None,
+            'risk_score': 0,
+            'verdict': 'CLEAN',
+            'checked_at': '2026-01-20T19:00:00+00:00',
+            'sources': []
+        }
+        mock_enrich.return_value = {'asn_geo': {'ips': ['1.2.3.4'], 'asn': None, 'geo': None, 'quality': {}}}
+
+        with patch('sys.argv', ['url-reputation', '1.2.3.4', '--json', '--enrich', 'asn_geo']):
+            with patch('sys.stdout', new=StringIO()) as mock_stdout:
+                with self.assertRaises(SystemExit):
+                    main()
+                out = json.loads(mock_stdout.getvalue())
+
+        self.assertIn('enrichment', out)
+        mock_enrich.assert_called_once()
+        _, kwargs = mock_enrich.call_args
+        self.assertEqual(kwargs['indicator_type'], 'ip')
+        self.assertEqual(kwargs['types'], ['asn_geo'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,9 +6,10 @@ import re
 import socket
 import subprocess
 from datetime import datetime
+from typing import Any, Optional
 
 
-def enrich_dns(domain: str, timeout: int = 10) -> dict:
+def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
     """
     Get DNS records for a domain.
     
@@ -17,7 +18,7 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict:
     Returns:
         dict with a_records, aaaa_records, mx_records, ns_records, txt_records
     """
-    result = {
+    result: dict[str, Any] = {
         'a_records': [],
         'aaaa_records': [],
         'mx_records': [],
@@ -49,7 +50,9 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict:
         # MX records
         try:
             answers = resolver.resolve(domain, 'MX')
-            result['mx_records'] = [{'priority': r.preference, 'host': str(r.exchange).rstrip('.')} for r in answers]
+            result['mx_records'] = [
+                {'priority': r.preference, 'host': str(r.exchange).rstrip('.')} for r in answers
+            ]
         except:
             pass
         
@@ -111,7 +114,7 @@ def enrich_whois(domain: str, timeout: int = 10) -> dict:
     Returns:
         dict with creation_date, registrar, domain_age_days, etc.
     """
-    result = {
+    result: dict[str, Any] = {
         'creation_date': None,
         'expiration_date': None,
         'updated_date': None,
@@ -210,7 +213,7 @@ def enrich_whois(domain: str, timeout: int = 10) -> dict:
     return result
 
 
-def enrich(domain: str, types: list = None, timeout: int = 10) -> dict:
+def enrich(domain: str, types: Optional[list[str]] = None, timeout: int = 10) -> dict[str, Any]:
     """
     Run enrichment for specified types.
     
@@ -222,19 +225,20 @@ def enrich(domain: str, types: list = None, timeout: int = 10) -> dict:
     Returns:
         dict with enrichment data
     """
-    if types is None:
-        types = ['dns', 'whois']
+    types_list: Optional[list[str]] = types
+    if types_list is None:
+        types_list = ['dns', 'whois']
+
+    result: dict[str, Any] = {}
     
-    result = {}
-    
-    if 'dns' in types:
+    if 'dns' in types_list:
         result['dns'] = enrich_dns(domain, timeout)
     
-    if 'whois' in types:
+    if 'whois' in types_list:
         result['whois'] = enrich_whois(domain, timeout)
     
     # Calculate risk indicators
-    risk_indicators = []
+    risk_indicators: list[str] = []
     
     if 'whois' in result:
         whois = result['whois']

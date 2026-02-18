@@ -8,6 +8,8 @@ Multi-source URL/domain security analysis with aggregated risk scoring.
 - **Works without API keys**: Free sources (URLhaus, OpenPhish, DNSBL, AlienVault OTX) always available
 - **Parallel checking**: Fast concurrent checks across all sources
 - **Aggregated risk score**: 0-100 score with verdict (CLEAN, LOW_RISK, MEDIUM_RISK, HIGH_RISK)
+- **Explainable scoring**: `score_breakdown[]` + `reasons[]` (optional provider weights via `URL_REPUTATION_PROVIDER_WEIGHTS`)
+- **Enrichment**: DNS/Whois + `asn_geo` (ASN + basic geo with quality report)
 
 ## Quick Start
 
@@ -28,7 +30,7 @@ uvx --from git+https://github.com/newuni/url-reputation url-reputation "https://
 pip install git+https://github.com/newuni/url-reputation
 
 # From wheel (download from releases)
-pip install url_reputation-1.0.0-py3-none-any.whl
+pip install url_reputation-1.5.0-py3-none-any.whl
 ```
 
 ### Download wheel
@@ -37,8 +39,8 @@ pip install url_reputation-1.0.0-py3-none-any.whl
 
 ```bash
 # Download and install
-curl -LO https://github.com/newuni/url-reputation/releases/download/v1.0.0/url_reputation-1.0.0-py3-none-any.whl
-pip install url_reputation-1.0.0-py3-none-any.whl
+curl -LO https://github.com/newuni/url-reputation/releases/download/v1.5.0/url_reputation-1.5.0-py3-none-any.whl
+pip install url_reputation-1.5.0-py3-none-any.whl
 url-reputation "https://example.com"
 ```
 
@@ -124,6 +126,8 @@ curl -X POST http://localhost:8095/api/batch \
   },
   "verdict": "CLEAN",
   "risk_score": 0,
+  "score_breakdown": [],
+  "reasons": [],
   "checked_at": "2026-02-17T13:00:00.000000+00:00",
   "sources": [
     {
@@ -134,7 +138,13 @@ curl -X POST http://localhost:8095/api/batch \
   ],
   "enrichment": {
     "dns": {"a_records": ["93.184.216.34"]},
-    "whois": {"registrar": "..."}
+    "whois": {"registrar": "..."},
+    "asn_geo": {
+      "ips": ["93.184.216.34"],
+      "asn": {"number": 15133, "org": "EDGECAST", "prefix": "93.184.216.0/24"},
+      "geo": {"country": "US"},
+      "quality": {"source": "mixed", "confidence": "medium", "coverage": ["ips", "asn", "country"], "notes": [], "sources": ["ripe", "ip-api"]}
+    }
   },
   "url": "https://example.com",
   "domain": "example.com"
@@ -142,6 +152,15 @@ curl -X POST http://localhost:8095/api/batch \
 ```
 
 ## Usage Examples
+
+### Explainable scoring (weights)
+
+You can tweak how much each provider/enrichment contributes:
+
+```bash
+export URL_REPUTATION_PROVIDER_WEIGHTS='{"phishtank": 1.0, "virustotal": 1.2, "redirects": 0.5, "whois": 1.0}'
+url-reputation "https://example.com" --enrich redirects,whois --json
+```
 
 ### Check a clean URL
 
@@ -170,6 +189,16 @@ Domain: google.com
 
 ```bash
 $ url-reputation "https://google.com" --json
+```
+
+### Markdown report output
+
+```bash
+# Single
+url-reputation "https://google.com" --format markdown
+
+# Batch (includes a summary at the end)
+url-reputation --file urls.txt --format markdown
 ```
 
 ### Profiles (developer-friendly presets)
@@ -262,6 +291,13 @@ url-reputation --file urls.txt --json
 
 # Control parallelism
 url-reputation --file urls.txt --workers 10
+
+# Limit batch work in CI
+url-reputation --file urls.txt --format ndjson --max-requests 100
+url-reputation --file urls.txt --format ndjson --budget-seconds 60
+
+# Preserve input order (buffered) for streaming outputs
+url-reputation --file urls.txt --format ndjson --preserve-order
 ```
 
 ### Check specific sources only
@@ -270,11 +306,15 @@ url-reputation --file urls.txt --workers 10
 url-reputation "https://example.com" --sources urlhaus,dnsbl
 ```
 
-### DNS & Whois enrichment
+### DNS, Whois & ASN/Geo enrichment
 
 ```bash
 # Add DNS records and Whois info
 url-reputation "https://example.com" --enrich dns,whois
+
+# Add ASN + Geo (works best for domains/IPs)
+url-reputation "example.com" --enrich asn_geo
+url-reputation "1.1.1.1" --enrich asn
 
 # DNS only
 url-reputation "https://example.com" --enrich dns

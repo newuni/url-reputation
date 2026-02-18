@@ -3,19 +3,26 @@
 URL Reputation Checker - CLI entry point
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor
+import time
+from collections.abc import Iterable, Iterator
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from typing import Any
 
 from .checker import check_url_reputation
-from .enrichment.service import enrich_indicator
+from .enrichment.service import enrich_indicator  # kept for test/backwards-compat patching
+from .markdown import to_markdown_batch, to_markdown_single
 from .output import (
     exit_code_from_results,
     exit_code_from_verdict,
     to_sarif,
     worst_verdict,
 )
+from .scoring import aggregate_risk_score
 from .webhook import notify_on_risk
 
 
@@ -51,7 +58,7 @@ def main():
     )
     parser.add_argument(
         '--format',
-        choices=['pretty', 'json', 'ndjson', 'sarif'],
+        choices=['pretty', 'json', 'ndjson', 'sarif', 'markdown'],
         default=None,
         help='Output format (default: pretty; --json is an alias for json)'
     )
@@ -94,6 +101,23 @@ def main():
         type=int,
         default=5,
         help='Max parallel workers for batch processing (default: 5)'
+    )
+    parser.add_argument(
+        '--max-requests',
+        type=int,
+        default=None,
+        help='Batch mode only: stop after processing at most N URLs (default: no limit)'
+    )
+    parser.add_argument(
+        '--budget-seconds',
+        type=float,
+        default=None,
+        help='Batch mode only: stop submitting new URLs after this many seconds (default: no limit)'
+    )
+    parser.add_argument(
+        '--preserve-order',
+        action='store_true',
+        help='Batch mode only: yield results in input order (buffered). Default streams as results complete.'
     )
     parser.add_argument(
         '--webhook',
@@ -146,11 +170,18 @@ def main():
             cache=args.cache,
             cache_ttl=args.cache_ttl,
             no_cache=args.no_cache,
+            max_requests=args.max_requests,
+            budget_seconds=args.budget_seconds,
+            preserve_order=args.preserve_order,
         )
 
         if out_format == 'json':
             payload = list(results)
             print(json.dumps(payload, indent=2))
+            exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
+        elif out_format == 'markdown':
+            payload = list(results)
+            print(to_markdown_batch(payload))
             exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
         elif out_format == 'ndjson':
             worst = 'CLEAN'
@@ -187,7 +218,7 @@ def main():
             cache_ttl_seconds=cache_ttl_seconds,
         )
 
-        # Add enrichment if requested
+        # Add enrichment if requested (kept for backwards-compat and CLI tests).
         if args.enrich:
             enrich_types = [t.strip() for t in args.enrich.split(',')]
             ind = result.get('indicator') or {}
@@ -202,6 +233,14 @@ def main():
                 timeout=args.timeout,
             )
 
+            # Recompute aggregated score so enrichment-based rules can contribute (T19).
+            sources_map = {s.get('name'): (s.get('raw') or {}) for s in result.get('sources', []) if isinstance(s, dict)}
+            agg = aggregate_risk_score(sources_map, enrichment=result.get('enrichment'))
+            result['risk_score'] = agg.risk_score
+            result['verdict'] = agg.verdict
+            result['score_breakdown'] = agg.score_breakdown
+            result['reasons'] = agg.reasons
+
         if out_format == 'json':
             if args.legacy_json:
                 # Provide a legacy map of provider results for older consumers.
@@ -209,6 +248,8 @@ def main():
                     s.get('name'): s.get('raw') for s in result.get('sources', [])
                 }
             print(json.dumps(result, indent=2, ensure_ascii=False))
+        elif out_format == 'markdown':
+            print(to_markdown_single(result))
         elif out_format == 'sarif':
             print(json.dumps(to_sarif([result]), indent=2))
         else:
@@ -223,7 +264,7 @@ def main():
     raise SystemExit(exit_code)
 
 
-def iter_urls_from_file(filepath: str):
+def iter_urls_from_file(filepath: str) -> Iterator[str]:
     """Yield URLs from a file (streaming).
 
     Skips empty lines and comments.
@@ -237,10 +278,10 @@ def iter_urls_from_file(filepath: str):
 
 def check_urls_from_file(
     filepath: str,
-    sources: list | None = None,
+    sources: list[str] | None = None,
     timeout: int = 30,
     max_workers: int = 5,
-):
+) -> list[dict[str, Any]]:
     """Backward-compatible wrapper: returns a list.
 
     Note: for large files prefer streaming via `iter_urls_from_file()` + `run_batch()`.
@@ -256,27 +297,35 @@ def check_urls_from_file(
             cache=None,
             cache_ttl='24h',
             no_cache=True,
+            # This wrapper returns a list; preserve input order for stable callers.
+            preserve_order=True,
+            max_requests=None,
+            budget_seconds=None,
         )
     )
 
 
 def run_batch(
-    urls_iter,
+    urls_iter: Iterable[str],
     *,
-    sources: list | None,
+    sources: list[str] | None,
     timeout: int,
     max_workers: int,
     cache: str | None,
     cache_ttl: str,
     no_cache: bool,
-):
+    max_requests: int | None = None,
+    budget_seconds: float | None = None,
+    preserve_order: bool = False,
+) -> Iterator[dict[str, Any]]:
     """Run batch checks with bounded in-flight tasks.
 
     This avoids loading huge files into memory.
 
     Notes:
-    - Results are yielded as they are completed (not necessarily original order).
-    - For stable order, users can post-process using `indicator`/`url`.
+    - By default, results are yielded as they are completed (not necessarily original order).
+    - With preserve_order=True, results are yielded in input order (buffered).
+    - budget_seconds limits submission of new work; it does not hard-stop in-flight tasks.
     """
 
     from .cache import default_cache_path, parse_ttl
@@ -289,7 +338,7 @@ def run_batch(
 
     max_in_flight = max_workers * 3
 
-    def submit(executor, url):
+    def submit(executor: ThreadPoolExecutor, url: str) -> Future[dict[str, Any]]:
         return executor.submit(
             check_url_reputation,
             url,
@@ -300,23 +349,76 @@ def run_batch(
         )
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        pending: list[tuple[str, object]] = []
+        start = time.monotonic()
 
+        def budget_exhausted() -> bool:
+            if budget_seconds is None:
+                return False
+            return (time.monotonic() - start) >= float(budget_seconds)
+
+        # Track futures -> (index, url) so we can optionally reorder on output.
+        pending: set[Future[dict[str, Any]]] = set()
+        meta: dict[Future[dict[str, Any]], tuple[int, str]] = {}
+
+        next_index = 0  # next input index to yield (preserve_order)
+        buffer: dict[int, dict[str, Any]] = {}
+
+        submitted = 0
+
+        # Submission + streaming loop with bounded in-flight futures.
         for url in urls_iter:
-            pending.append((url, submit(executor, url)))
+            if max_requests is not None and submitted >= int(max_requests):
+                break
+            if budget_exhausted():
+                break
+
+            fut = submit(executor, url)
+            idx = submitted
+            submitted += 1
+
+            pending.add(fut)
+            meta[fut] = (idx, url)
 
             if len(pending) >= max_in_flight:
-                u, fut = pending.pop(0)
-                try:
-                    yield fut.result()  # type: ignore[attr-defined]
-                except Exception as e:
-                    yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for d in done:
+                    i, u = meta.pop(d)
+                    if preserve_order:
+                        try:
+                            buffer[i] = d.result()
+                        except Exception as e:
+                            buffer[i] = {'url': u, 'error': str(e), 'verdict': 'ERROR'}
+                    else:
+                        try:
+                            yield d.result()
+                        except Exception as e:
+                            yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
 
-        for u, fut in pending:
-            try:
-                yield fut.result()  # type: ignore[attr-defined]
-            except Exception as e:
-                yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
+                if preserve_order:
+                    while next_index in buffer:
+                        yield buffer.pop(next_index)
+                        next_index += 1
+
+        # Drain remaining futures.
+        while pending:
+            done, pending = wait(pending, return_when=FIRST_COMPLETED)
+            for d in done:
+                i, u = meta.pop(d)
+                if preserve_order:
+                    try:
+                        buffer[i] = d.result()
+                    except Exception as e:
+                        buffer[i] = {'url': u, 'error': str(e), 'verdict': 'ERROR'}
+                else:
+                    try:
+                        yield d.result()
+                    except Exception as e:
+                        yield {'url': u, 'error': str(e), 'verdict': 'ERROR'}
+
+            if preserve_order:
+                while next_index in buffer:
+                    yield buffer.pop(next_index)
+                    next_index += 1
 
 
 def _maybe_send_webhook(result: dict, args):
@@ -407,7 +509,7 @@ def print_batch_results(results: list):
     print(f"Total URLs: {len(results)}")
     
     # Summary counts
-    verdicts = {}
+    verdicts: dict[str, int] = {}
     for r in results:
         v = r.get('verdict', 'ERROR')
         verdicts[v] = verdicts.get(v, 0) + 1

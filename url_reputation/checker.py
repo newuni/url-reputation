@@ -4,10 +4,13 @@ This module returns results in the **Schema v1** contract.
 See `docs/schema-v1.md`.
 """
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from __future__ import annotations
+
+import threading
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 # Load .env file if present
@@ -21,9 +24,10 @@ try:
 except ImportError:
     pass  # dotenv not installed, rely on environment variables
 
-from .models import IndicatorV1, RateLimitV1, ResultV1, SourceResultV1
-from .providers import ProviderContext, Registry, builtin_providers
+from .models import IndicatorType, IndicatorV1, RateLimitV1, ResultV1, SourceResultV1
+from .providers import Provider, ProviderContext, Registry, builtin_providers
 from .retry import RetryPolicy, retry_call
+from .scoring import aggregate_risk_score
 from .sources import (
     abuseipdb,
     alienvault_otx,
@@ -59,6 +63,10 @@ FREE_SOURCES = ['urlhaus', 'phishtank', 'dnsbl', 'alienvault_otx']
 def get_default_registry() -> Registry:
     return Registry(builtin_providers())
 
+# Process-wide concurrency controls (useful in batch mode).
+_GLOBAL_SEM: threading.Semaphore | None = None
+_PROVIDER_SEMS: dict[str, threading.Semaphore] = {}
+
 THREAT_WEIGHTS = {
     'malware': 40,
     'phishing': 35,
@@ -77,7 +85,12 @@ def canonicalize_indicator(value: str) -> IndicatorV1:
     from .normalize import normalize_indicator
 
     n = normalize_indicator(value)
-    return IndicatorV1(input=n.input, type=n.type, canonical=n.canonical, domain=n.domain)
+    return IndicatorV1(
+        input=n.input,
+        type=cast(IndicatorType, n.type),
+        canonical=n.canonical,
+        domain=n.domain,
+    )
 
 
 def extract_domain(url: str) -> str:
@@ -94,70 +107,14 @@ def extract_domain(url: str) -> str:
 
 
 def calculate_risk_score(results: dict) -> tuple[int, str]:
-    """Calculate aggregated risk score from all source results."""
-    score = 0
-    
-    for source, data in results.items():
-        if data.get('error'):
-            continue
-            
-        if source == 'virustotal' and data.get('detected', 0) > 0:
-            ratio = data['detected'] / max(data.get('total', 70), 1)
-            score += int(ratio * 50)
-            
-        elif source == 'urlhaus' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('malware', 30)
-            
-        elif source == 'phishtank' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('phishing', 35)
-            
-        elif source in ('spamhaus_dbl', 'surbl') and data.get('listed'):
-            score += THREAT_WEIGHTS.get('spam', 20)
-            
-        elif source == 'dnsbl' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('spam', 20)
-            
-        elif source == 'safebrowsing' and data.get('threats'):
-            score += THREAT_WEIGHTS.get('malware', 35)
-            
-        elif source == 'abuseipdb' and data.get('abuse_score', 0) > 50:
-            score += int(data['abuse_score'] * 0.4)
-            
-        elif source == 'urlscan' and data.get('malicious'):
-            score += THREAT_WEIGHTS.get('suspicious', 25)
-            
-        elif source == 'alienvault_otx':
-            # OTX: pulses indicate threat intel reports
-            if data.get('has_pulses') and not data.get('is_whitelisted'):
-                pulse_count = data.get('pulse_count', 0)
-                if pulse_count >= 5:
-                    score += THREAT_WEIGHTS.get('malware', 30)
-                elif pulse_count >= 1:
-                    score += THREAT_WEIGHTS.get('suspicious', 15)
-                    
-        elif source == 'threatfox' and data.get('listed'):
-            score += THREAT_WEIGHTS.get('malware', 40)
-            
-        elif source == 'ipqualityscore':
-            if data.get('malware'):
-                score += THREAT_WEIGHTS.get('malware', 40)
-            elif data.get('phishing'):
-                score += THREAT_WEIGHTS.get('phishing', 35)
-            elif data.get('suspicious') or data.get('risk_score', 0) >= 75:
-                score += THREAT_WEIGHTS.get('suspicious', 20)
-    
-    score = min(score, 100)
-    
-    if score <= 20:
-        verdict = 'CLEAN'
-    elif score <= 50:
-        verdict = 'LOW_RISK'
-    elif score <= 75:
-        verdict = 'MEDIUM_RISK'
-    else:
-        verdict = 'HIGH_RISK'
-    
-    return score, verdict
+    """Calculate aggregated risk score from all source results.
+
+    Backwards-compatible wrapper returning (risk_score, verdict).
+    For explainability, use `url_reputation.scoring.aggregate_risk_score`.
+    """
+
+    agg = aggregate_risk_score(results)
+    return agg.risk_score, agg.verdict
 
 
 def check_url_reputation(
@@ -167,7 +124,8 @@ def check_url_reputation(
     *,
     cache_path: str | None = None,
     cache_ttl_seconds: int | None = None,
-) -> dict:
+    enrichment_types: Optional[list[str]] = None,
+) -> dict[str, Any]:
     """Check reputation across multiple sources.
 
     Returns a dict conforming to **Schema v1**.
@@ -185,7 +143,7 @@ def check_url_reputation(
 
     # Cache lookup (opt-in)
     cache = None
-    cache_key = None
+    cache_key: str | None = None
     ttl = cache_ttl_seconds
     if cache_path and (ttl is not None):
         from .cache import Cache, make_cache_key
@@ -198,20 +156,20 @@ def check_url_reputation(
         )
         cached = cache.get(cache_key, ttl_seconds=ttl)
         if cached:
+            # Additive fields introduced in newer schema v1 revisions (T19).
+            cached.setdefault("score_breakdown", [])
+            cached.setdefault("reasons", [])
             return cached
 
-    results_map: dict[str, dict] = {}
-
-    # Concurrency controls (process-wide), useful in batch mode.
-    import threading
+    results_map: dict[str, dict[str, Any]] = {}
 
     global_limit = int(__import__("os").getenv("URL_REPUTATION_MAX_CONCURRENCY", "20"))
-    if not hasattr(check_url_reputation, "_global_sem"):
-        check_url_reputation._global_sem = threading.Semaphore(global_limit)  # type: ignore[attr-defined]
-        check_url_reputation._provider_sems = {}  # type: ignore[attr-defined]
-
-    global_sem = check_url_reputation._global_sem  # type: ignore[attr-defined]
-    provider_sems: dict[str, threading.Semaphore] = check_url_reputation._provider_sems  # type: ignore[attr-defined]
+    global _GLOBAL_SEM
+    if _GLOBAL_SEM is None:
+        _GLOBAL_SEM = threading.Semaphore(global_limit)
+    global_sem = _GLOBAL_SEM
+    assert global_sem is not None
+    provider_sems = _PROVIDER_SEMS
 
     def _get_provider_sem(pname: str, limit: int) -> threading.Semaphore:
         if pname not in provider_sems:
@@ -222,15 +180,15 @@ def check_url_reputation(
         msg = str(e).lower()
         return any(s in msg for s in ["429", "rate limit", "timeout", "timed out", "temporarily"])
 
-    def _run_provider(p):
-        sem = _get_provider_sem(p.name, getattr(p, "max_concurrency", 5))
+    def _run_provider(p: Provider) -> dict[str, Any]:
+        sem = _get_provider_sem(p.name, p.max_concurrency)
 
-        def _call():
+        def _call() -> dict[str, Any]:
             with global_sem:
                 with sem:
                     return p.check(indicator.canonical, domain, ctx)
 
-        policy = RetryPolicy(retries=getattr(p, "retry_retries", 2))
+        policy = RetryPolicy(retries=p.retry_retries)
         return retry_call(_call, policy=policy, should_retry=_should_retry_exc)
 
     if providers:
@@ -244,12 +202,44 @@ def check_url_reputation(
                 except Exception as e:
                     results_map[name] = {"error": str(e)}
 
-    risk_score, verdict = calculate_risk_score(results_map)
+    # Optional enrichment (e.g., redirects, whois domain age) can contribute to score.
+    enrichment = None
+    if enrichment_types:
+        try:
+            from .enrichment.service import enrich_indicator
+
+            enrichment = enrich_indicator(
+                str(indicator.canonical),
+                indicator_type=indicator.type,
+                types=enrichment_types,
+                timeout=timeout,
+            )
+        except Exception as e:
+            enrichment = {"error": str(e)}
+
+    agg = aggregate_risk_score(results_map, enrichment=enrichment)
+    risk_score, verdict = agg.risk_score, agg.verdict
 
     sources_list: list[SourceResultV1] = []
     for p in providers:
         name = p.name
-        payload = results_map.get(name, {})
+        payload = results_map.get(name) or {}
+
+        rate_limit_info = None
+        rate_limit = None
+        try:
+            rl = p.parse_rate_limit(payload)
+            if isinstance(rl, dict):
+                rate_limit_info = rl
+                rate_limit = RateLimitV1(
+                    limit=rl.get("limit"),
+                    remaining=rl.get("remaining"),
+                    reset_at=rl.get("reset_at"),
+                )
+        except Exception:
+            rate_limit_info = None
+            rate_limit = None
+
         if payload.get('error'):
             sources_list.append(
                 SourceResultV1(
@@ -257,6 +247,8 @@ def check_url_reputation(
                     status="error",
                     raw={k: v for k, v in payload.items() if k != 'error'},
                     error=str(payload.get('error')),
+                    rate_limit=rate_limit,
+                    rate_limit_info=rate_limit_info,
                 )
             )
             continue
@@ -273,18 +265,6 @@ def check_url_reputation(
         elif isinstance(payload.get('abuse_score'), (int, float)):
             score = float(payload['abuse_score'])
 
-        rate_limit = None
-        try:
-            rl = p.parse_rate_limit(payload)
-            if isinstance(rl, dict):
-                rate_limit = RateLimitV1(
-                    limit=rl.get("limit"),
-                    remaining=rl.get("remaining"),
-                    reset_at=rl.get("reset_at"),
-                )
-        except Exception:
-            rate_limit = None
-
         sources_list.append(
             SourceResultV1(
                 name=name,
@@ -293,6 +273,7 @@ def check_url_reputation(
                 score=score,
                 raw=payload,
                 rate_limit=rate_limit,
+                rate_limit_info=rate_limit_info,
             )
         )
 
@@ -304,13 +285,16 @@ def check_url_reputation(
         risk_score=risk_score,
         checked_at=checked_at,
         sources=sources_list,
-        enrichment=None,
+        enrichment=enrichment,
     )
 
     # Backwards-compatible convenience fields (non-schema)
     out = result.to_dict()
     out["url"] = indicator.input
     out["domain"] = domain
+    # Additive explainability fields (T19).
+    out["score_breakdown"] = agg.score_breakdown
+    out["reasons"] = agg.reasons
 
     if cache and cache_key:
         cache.set(cache_key, out)
@@ -323,7 +307,7 @@ def check_urls_batch(
     sources: Optional[list[str]] = None,
     timeout: int = 30,
     max_workers: int = 5
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
     Check multiple URLs in parallel.
     
@@ -339,10 +323,10 @@ def check_urls_batch(
     if not urls:
         return []
     
-    results = []
+    results: list[dict[str, Any]] = []
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_url = {
+        future_to_url: dict[Future[dict[str, Any]], str] = {
             executor.submit(check_url_reputation, url, sources, timeout): url
             for url in urls
         }

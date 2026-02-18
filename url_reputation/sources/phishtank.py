@@ -9,6 +9,7 @@ import json
 import os
 import time
 import urllib.request
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 # Cache settings
@@ -25,7 +26,7 @@ def _get_domain(url: str) -> str:
         return url
 
 
-def _load_cache() -> tuple[dict, float]:
+def _load_cache() -> tuple[Optional[dict[str, Any]], float]:
     """Load cached data if valid."""
     try:
         if os.path.exists(CACHE_FILE):
@@ -35,10 +36,10 @@ def _load_cache() -> tuple[dict, float]:
                     return json.load(f), mtime
     except:
         pass
-    return None, 0
+    return None, 0.0
 
 
-def _save_cache(data: dict):
+def _save_cache(data: dict[str, Any]) -> None:
     """Save data to cache."""
     try:
         with open(CACHE_FILE, 'w') as f:

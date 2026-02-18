@@ -24,4 +24,10 @@ The Provider must implement the `url_reputation.providers.base.Provider` interfa
 my_enricher = "mypkg.enrichers:enricher"
 ```
 
-(Enricher loading will be wired similarly when we expand enrichment plugins.)
+Where `mypkg.enrichers:enricher` is either:
+- an **Enricher instance**, or
+- a **factory** returning an Enricher instance.
+
+The Enricher must implement the `url_reputation.enrichment.base.Enricher` interface.
+
+Enricher entry points are loaded automatically (best-effort) into the enrichment registry.

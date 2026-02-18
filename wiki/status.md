@@ -120,7 +120,7 @@ Goal: external providers can be added without editing core.
   - Added Ruff (lint rules) + mypy (type checking) configuration in `pyproject.toml` and docs in `docs/static-analysis.md`.
   - Applied Ruff safe auto-fixes.
   - Ruff status: `ruff check .` passes (we exclude legacy `scripts/**` and ignore E501/E722/B904 initially; tighten later).
-  - mypy status: `mypy url_reputation` passes in informational mode (`ignore_errors=true` for initial adoption; tighten later).
+  - mypy status: `mypy url_reputation` baseline is enforced (no global `ignore_errors=true`; tighten options gradually).
 
 #### C0 — Stop tracking build artifacts (dist/)
 - Status: DONE
@@ -257,57 +257,81 @@ Goal: external providers can be added without editing core.
   - Added tests and made DNS enrichment tests deterministic when dnspython is installed.
 
 #### T13 — Provider-specific rate limit parsing (real)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - For each built-in provider, parse rate-limit headers/fields into `SourceResultV1.rate_limit`
   - Retry policy respects `Retry-After` and reset windows when available
+- Notes:
+  - Added normalized `RateLimitInfo` parsing from provider response headers (GitHub-style `X-RateLimit-*`, generic `Retry-After`).
+  - Built-in HTTP sources now attach response metadata under `_http` so providers can parse headers without network in tests.
+  - Output now includes `sources[].rate_limit_info` (rich, JSON-safe), while keeping `sources[].rate_limit` for backwards compatibility.
 
 ### Phase 3 — CLI ergonomics + CI integration (improvements)
 
 #### T14 — Report outputs (markdown + summary)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--format markdown` (single + batch)
   - A one-page summary at end of batch runs (worst verdict, counts by verdict, errors)
+- Notes:
+  - Commit: `2c45aa0` (feat: markdown report output + batch summary (T14))
 
 #### T15 — Batch mode: budget + deterministic ordering option
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--budget-seconds` and/or `--max-requests` to cap work in CI
   - `--preserve-order` (optional): yield results in input order (buffered)
+- Notes:
+  - Commit: `98edd6f` — feat: batch budgeting + preserve-order (T15)
 
 ### Phase 4 — Enrichment & normalization (more)
 
 #### T16 — ASN/Geo enricher (domain/ip)
-- Status: TODO
+- Status: DONE
 - Deliverables:
-  - `--enrich asn` (and optionally `geo`) mapping domain→IP→ASN/org/country
-  - Configurable sources (free-first); keep deps optional
+  - `--enrich asn_geo` (alias: `asn`) mapping domain/IP→ASN/org/prefix + basic geo
+  - Online-first, no API keys; local/offline fallback with quality reporting
+  - Deterministic offline tests (no external network)
+- Notes:
+  - Added `url_reputation/enrichment/asn_geo.py` (RIPEstat + Team Cymru + ip-api, with TTL caching and graceful fallback).
+  - Output includes a `quality` object: source/confidence/coverage/notes/sources.
+  - Registered enricher in `url_reputation/enrichment/builtins.py` as `asn_geo` and alias `asn`.
+  - Docs updated: `docs/schema-v1.md`.
+  - Commit: `9cb0a4b` (feat: asn/geo enricher with quality report (T16))
 
 ### Phase 5 — Plugins + ecosystem (improvements)
 
 #### T17 — Enricher entrypoints loader + docs
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Mirror provider entrypoints: load enrichers from `url_reputation.enrichers`
   - Docs + minimal example package
+- Notes:
+  - Added `EnrichmentRegistry.load_entrypoints()` (best-effort) + `list_names()`.
+  - Updated `docs/plugins.md` with enricher entrypoint usage.
+  - Commit: `f820e78` (feat: enricher entrypoints loader (T17))
 
 ### Maintenance / tightening
 
 #### T18 — Tighten mypy (progressively)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Move from informational to enforceable mypy (reduce `ignore_errors=true`)
   - Fix highest-value type issues first (core library surface)
+- Notes:
+  - Removed global `ignore_errors=true` and tightened types in core surfaces (checker/CLI/providers).
+  - Eliminated legacy `type: ignore[...]` markers by fixing underlying typing.
+  - Commit: `ea420cb` (chore: tighten mypy baseline (T18))
 
 #### T19 — Unified aggregated scoring rules (explainable)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `risk_score` explanation (`score_breakdown` / `reasons[]`)
   - Configurable weights per provider and a small set of rules (redirects + domain age, etc.)
+- Commit: `4545fc8` (feat: explainable aggregated scoring (T19))
 
 ---
 
 ## Next task to execute
 
-Now executing **T12 — Redirect-chain enricher**.
+No pending T12–T19 tasks. Add new tasks above when needed.

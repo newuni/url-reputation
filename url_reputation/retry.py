@@ -46,4 +46,5 @@ def retry_call(fn: Callable[[], T], policy: RetryPolicy, should_retry: Callable[
             time.sleep(_sleep_seconds(i + 1, policy))
 
     # unreachable, but keeps mypy happy
-    raise last_err  # type: ignore[misc]
+    assert last_err is not None
+    raise last_err
