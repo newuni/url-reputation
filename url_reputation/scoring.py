@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from .models import Verdict
@@ -375,14 +376,15 @@ def aggregate_risk_score(
                     if isinstance(first, Mapping):
                         initial_url = first.get("url")
                 final_url = redirects.get("final_url")
-                if isinstance(initial_url, str) and isinstance(final_url, str):
-                    if (
-                        _host(initial_url)
-                        and _host(final_url)
-                        and _host(initial_url) != _host(final_url)
-                    ):
-                        pts += 5
-                        why = why + " (cross-domain)"
+                if (
+                    isinstance(initial_url, str)
+                    and isinstance(final_url, str)
+                    and _host(initial_url)
+                    and _host(final_url)
+                    and _host(initial_url) != _host(final_url)
+                ):
+                    pts += 5
+                    why = why + " (cross-domain)"
 
                 _add_contribution(
                     contribs,

@@ -559,10 +559,27 @@ Execution strategy agreed with owner: **blocks of 2** tasks.
 
 ---
 
+### Block D (done)
+
+#### Q7 — Ruff: adopt `UP` family (pyupgrade), incremental baseline
+- **Status:** DONE
+- **Deliverables:**
+  - Added `UP` to Ruff `select`
+  - Auto-applied safe fixes and kept noisy migration rule (`UP045`) deferred for phased adoption
+- **DoD:** `ruff check .` green with `UP` enabled in baseline
+
+#### Q8 — Ruff: adopt `SIM` family (simplify), incremental baseline
+- **Status:** DONE
+- **Deliverables:**
+  - Added `SIM` to Ruff `select`
+  - Applied safe simplifications and kept style-only/high-noise SIM rules deferred for now
+- **DoD:** `ruff check .` green with `SIM` enabled in baseline
+
 ## Next task to execute
 
-**COMPLETED** — Q1-Q6 done in blocks of 2.
+**COMPLETED** — Q1-Q8 done in blocks of 2.
 
 Future hardening (optional):
-- Add Ruff families incrementally (`UP`, `SIM`, `RET`, `C4`)
+- Tighten deferred `UP/SIM` codes gradually (`UP045`, `SIM105`, `SIM108`, `SIM113`, `SIM117`)
+- Add Ruff families `RET`, `C4`
 - Enforce coverage floor in CI (`--cov-fail-under` progressive)
