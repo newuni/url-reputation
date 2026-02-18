@@ -64,10 +64,7 @@ def to_markdown_single(result: dict[str, Any]) -> str:
     out.append(f"- Canonical: {_md_code(canonical)}")
     out.append(f"- Domain: {_md_code(domain)}")
     out.append(f"- Verdict: {_md_code(verdict)}")
-    if risk_score in (None, "-"):
-        risk_score_display = "-"
-    else:
-        risk_score_display = f"{risk_score}/100"
+    risk_score_display = "-" if risk_score in (None, "-") else f"{risk_score}/100"
     out.append(f"- Risk score: {_md_code(risk_score_display)}")
     out.append(f"- Checked at: {_md_code(checked_at)}")
     out.append("")

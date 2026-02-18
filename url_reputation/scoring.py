@@ -399,12 +399,8 @@ def aggregate_risk_score(
         whois = enrichment.get("whois")
         if isinstance(whois, Mapping):
             age_days = whois.get("domain_age_days")
-            age_i: Optional[int] = None
-            if isinstance(age_days, (int, float)):
-                age_i = int(age_days)
-            else:
-                # Some WHOIS implementations may return strings; ignore for scoring.
-                age_i = None
+            # Some WHOIS implementations may return strings; ignore for scoring.
+            age_i: Optional[int] = int(age_days) if isinstance(age_days, (int, float)) else None
 
             if age_i is not None and age_i >= 0:
                 if age_i < 7:

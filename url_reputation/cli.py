@@ -348,10 +348,8 @@ def run_batch(
         next_index = 0  # next input index to yield (preserve_order)
         buffer: dict[int, dict[str, Any]] = {}
 
-        submitted = 0
-
         # Submission + streaming loop with bounded in-flight futures.
-        for url in urls_iter:
+        for submitted, url in enumerate(urls_iter):
             if max_requests is not None and submitted >= int(max_requests):
                 break
             if budget_exhausted():
@@ -359,7 +357,6 @@ def run_batch(
 
             fut = submit(executor, url)
             idx = submitted
-            submitted += 1
 
             pending.add(fut)
             meta[fut] = (idx, url)

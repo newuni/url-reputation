@@ -584,13 +584,25 @@ Future hardening (optional):
 - Add Ruff families `RET`, `C4`
 - Enforce coverage floor in CI (`--cov-fail-under` progressive)
 
+### Block E (done)
+
+#### Q9 — Resolve deferred `SIM117` (nested `with`) + `SIM113` (enumerate)
+- **Status:** DONE
+- **Deliverables:**
+  - Consolidated nested `with` contexts in tests and checker internals
+  - Refactored batch loop index handling to `enumerate()`
+- **DoD:** `ruff check .` green without ignoring `SIM117` / `SIM113`
+
+#### Q10 — Resolve deferred `SIM108` (ternary preference)
+- **Status:** DONE
+- **Deliverables:**
+  - Rewrote style-only `if/else` assignments in markdown/scoring
+- **DoD:** `ruff check .` green without ignoring `SIM108`
+
 ### Deferred-by-design (explicitly parked)
 
-The following rules were intentionally deferred to avoid high-noise diffs while keeping CI green:
+The following rules remain intentionally deferred to avoid high-noise diffs:
 - `UP045` (`Optional[T]` → `T | None` mass migration)
 - `SIM105` (replace `try/except/pass` with `contextlib.suppress`)
-- `SIM108` (ternary preference)
-- `SIM113` (prefer `enumerate`)
-- `SIM117` (merge nested `with` contexts)
 
 Decision: resolve these incrementally in dedicated small blocks, updating this status doc after each block.

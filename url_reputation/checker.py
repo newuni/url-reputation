@@ -186,9 +186,8 @@ def check_url_reputation(
         sem = _get_provider_sem(p.name, p.max_concurrency)
 
         def _call() -> dict[str, Any]:
-            with global_sem:
-                with sem:
-                    return p.check(indicator.canonical, domain, ctx)
+            with global_sem, sem:
+                return p.check(indicator.canonical, domain, ctx)
 
         policy = RetryPolicy(retries=p.retry_retries)
         return retry_call(_call, policy=policy, should_retry=_should_retry_exc)
