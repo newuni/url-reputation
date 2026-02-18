@@ -30,7 +30,7 @@ uvx --from git+https://github.com/newuni/url-reputation url-reputation "https://
 pip install git+https://github.com/newuni/url-reputation
 
 # From wheel (download from releases)
-pip install url_reputation-1.5.0-py3-none-any.whl
+pip install url_reputation-1.6.0-py3-none-any.whl
 ```
 
 ### Download wheel
@@ -39,8 +39,8 @@ pip install url_reputation-1.5.0-py3-none-any.whl
 
 ```bash
 # Download and install
-curl -LO https://github.com/newuni/url-reputation/releases/download/v1.5.0/url_reputation-1.5.0-py3-none-any.whl
-pip install url_reputation-1.5.0-py3-none-any.whl
+curl -LO https://github.com/newuni/url-reputation/releases/download/v1.6.0/url_reputation-1.6.0-py3-none-any.whl
+pip install url_reputation-1.6.0-py3-none-any.whl
 url-reputation "https://example.com"
 ```
 
@@ -621,14 +621,25 @@ Copy or symlink this folder to your Clawdbot skills directory to use it as an ag
 
 ```bash
 # Run all tests
-python3 -m unittest discover tests/
+pytest tests/ -v
+
+# With coverage report
+pytest tests/ --cov=url_reputation --cov-report=html
 
 # Run specific test file
-python3 -m unittest tests.test_checker
+pytest tests/test_checker.py -v
 
-# With pytest (if installed)
-pytest tests/ -v
+# Property-based tests
+pytest tests/test_properties.py -v
+
+# Integration tests
+pytest tests/test_integration.py -v
+
+# Benchmarks only
+pytest tests/bench/ --benchmark-only
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed test guidelines.
 
 ## Performance Benchmarks
 
@@ -689,21 +700,32 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 
 ## Roadmap
 
-### ✅ Completed
+### ✅ Completed in v1.6.0
+
+- [x] **Test coverage & property-based tests** - pytest-cov, hypothesis
+- [x] **Integration test suite** - HTTP mocks, fixtures
+- [x] **Architecture Decision Records** - ADRs for key design decisions
+- [x] **Contributing guide** - CONTRIBUTING.md + issue templates
+- [x] **Benchmark suite** - pytest-benchmark with throughput/latency tests
+- [x] **Memory profiling** - scripts/profile_memory.py
+- [x] **Provider comparison** - docs/performance/provider_comparison.md
+- [x] **CI/CD** - GitHub Actions for tests, release, PyPI publish
+
+### ✅ Previously Completed
 
 - [x] **Config file** - `.env` support for API keys
 - [x] **Webhook notifications** - HMAC-signed webhooks on risk detection
 - [x] **DNS/Whois lookup** - `--enrich dns,whois` for domain intel
 - [x] **Docker web UI** - REST API + visual frontend with Docker Compose
 
-### 🚧 Planned
+### 🚧 Future Ideas
 
 - [ ] **Rich terminal output** - Colors and formatting with Rich library
 - [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
 - [ ] **Quiet mode** - `--quiet` / `--alert-above 50` for scripting
 - [ ] **HTML report** - Generate visual report with badges
 - [ ] **SSL certificate check** - Validity, expiration, issuer
-- [ ] **GitHub Action** - Scan URLs in PRs/commits
+- [ ] **More enrichment sources** - Screenshot, TLS analysis
 
 Contributions welcome! 🐙
 
