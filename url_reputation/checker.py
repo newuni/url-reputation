@@ -16,8 +16,9 @@ from urllib.parse import urlparse
 # Load .env file if present
 try:
     from dotenv import load_dotenv
+
     # Try current dir, then home dir
-    for env_path in [Path('.env'), Path.home() / '.env', Path.home() / '.urlreputation.env']:
+    for env_path in [Path(".env"), Path.home() / ".env", Path.home() / ".urlreputation.env"]:
         if env_path.exists():
             load_dotenv(env_path)
             break
@@ -44,35 +45,36 @@ from .sources import (
 # NOTE: ALL_SOURCES/FREE_SOURCES are kept for backwards-compat/tests.
 ALL_SOURCES = {
     # Free sources (no API key required)
-    'urlhaus': urlhaus.check,
-    'phishtank': phishtank.check,
-    'dnsbl': dnsbl.check,
-    'alienvault_otx': alienvault_otx.check,
-    'threatfox': threatfox.check,
+    "urlhaus": urlhaus.check,
+    "phishtank": phishtank.check,
+    "dnsbl": dnsbl.check,
+    "alienvault_otx": alienvault_otx.check,
+    "threatfox": threatfox.check,
     # API key required
-    'virustotal': virustotal.check,
-    'urlscan': urlscan.check,
-    'safebrowsing': safebrowsing.check,
-    'abuseipdb': abuseipdb.check,
-    'ipqualityscore': ipqualityscore.check,
+    "virustotal": virustotal.check,
+    "urlscan": urlscan.check,
+    "safebrowsing": safebrowsing.check,
+    "abuseipdb": abuseipdb.check,
+    "ipqualityscore": ipqualityscore.check,
 }
 
-FREE_SOURCES = ['urlhaus', 'phishtank', 'dnsbl', 'alienvault_otx']
+FREE_SOURCES = ["urlhaus", "phishtank", "dnsbl", "alienvault_otx"]
 
 
 def get_default_registry() -> Registry:
     return Registry(builtin_providers())
+
 
 # Process-wide concurrency controls (useful in batch mode).
 _GLOBAL_SEM: threading.Semaphore | None = None
 _PROVIDER_SEMS: dict[str, threading.Semaphore] = {}
 
 THREAT_WEIGHTS = {
-    'malware': 40,
-    'phishing': 35,
-    'spam': 20,
-    'suspicious': 15,
-    'unknown': 10,
+    "malware": 40,
+    "phishing": 35,
+    "spam": 20,
+    "suspicious": 15,
+    "unknown": 10,
 }
 
 
@@ -100,10 +102,10 @@ def extract_domain(url: str) -> str:
     Note: this returns the raw `netloc` which may include userinfo and port.
     """
     value = url
-    if not value.startswith(('http://', 'https://')):
-        value = 'http://' + value
+    if not value.startswith(("http://", "https://")):
+        value = "http://" + value
     parsed = urlparse(value)
-    return parsed.netloc or parsed.path.split('/')[0]
+    return parsed.netloc or parsed.path.split("/")[0]
 
 
 def calculate_risk_score(results: dict) -> tuple[int, str]:
@@ -240,13 +242,13 @@ def check_url_reputation(
             rate_limit_info = None
             rate_limit = None
 
-        if payload.get('error'):
+        if payload.get("error"):
             sources_list.append(
                 SourceResultV1(
                     name=name,
                     status="error",
-                    raw={k: v for k, v in payload.items() if k != 'error'},
-                    error=str(payload.get('error')),
+                    raw={k: v for k, v in payload.items() if k != "error"},
+                    error=str(payload.get("error")),
                     rate_limit=rate_limit,
                     rate_limit_info=rate_limit_info,
                 )
@@ -254,16 +256,16 @@ def check_url_reputation(
             continue
 
         listed = None
-        if 'listed' in payload:
-            listed = bool(payload.get('listed'))
-        elif 'malicious' in payload:
-            listed = bool(payload.get('malicious'))
+        if "listed" in payload:
+            listed = bool(payload.get("listed"))
+        elif "malicious" in payload:
+            listed = bool(payload.get("malicious"))
 
         score = None
-        if isinstance(payload.get('risk_score'), (int, float)):
-            score = float(payload['risk_score'])
-        elif isinstance(payload.get('abuse_score'), (int, float)):
-            score = float(payload['abuse_score'])
+        if isinstance(payload.get("risk_score"), (int, float)):
+            score = float(payload["risk_score"])
+        elif isinstance(payload.get("abuse_score"), (int, float)):
+            score = float(payload["abuse_score"])
 
         sources_list.append(
             SourceResultV1(
@@ -303,48 +305,40 @@ def check_url_reputation(
 
 
 def check_urls_batch(
-    urls: list[str],
-    sources: Optional[list[str]] = None,
-    timeout: int = 30,
-    max_workers: int = 5
+    urls: list[str], sources: Optional[list[str]] = None, timeout: int = 30, max_workers: int = 5
 ) -> list[dict[str, Any]]:
     """
     Check multiple URLs in parallel.
-    
+
     Args:
         urls: List of URLs to check
         sources: List of sources to use (default: all available)
         timeout: Timeout in seconds for each source
         max_workers: Maximum parallel workers
-        
+
     Returns:
         List of results for each URL (in original order)
     """
     if not urls:
         return []
-    
+
     results: list[dict[str, Any]] = []
-    
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_url: dict[Future[dict[str, Any]], str] = {
-            executor.submit(check_url_reputation, url, sources, timeout): url
-            for url in urls
+            executor.submit(check_url_reputation, url, sources, timeout): url for url in urls
         }
-        
+
         for future in as_completed(future_to_url):
             url = future_to_url[future]
             try:
                 result = future.result()
                 results.append(result)
             except Exception as e:
-                results.append({
-                    'url': url,
-                    'error': str(e),
-                    'verdict': 'ERROR'
-                })
-    
+                results.append({"url": url, "error": str(e), "verdict": "ERROR"})
+
     # Sort by original order
     url_order = {url: i for i, url in enumerate(urls)}
-    results.sort(key=lambda r: url_order.get(r['url'], 999))
-    
+    results.sort(key=lambda r: url_order.get(r["url"], 999))
+
     return results

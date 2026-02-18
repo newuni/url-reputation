@@ -112,10 +112,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Detect Dockerfile
+        id: dockerfile
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No Dockerfile found at repo root; skipping Docker build test."
+          fi
+
       - name: Set up Docker Buildx
+        if: steps.dockerfile.outputs.exists == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
+        if: steps.dockerfile.outputs.exists == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -126,5 +138,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Test Docker image
+        if: steps.dockerfile.outputs.exists == 'true'
         run: |
           docker run --rm url-reputation:test url-reputation --help

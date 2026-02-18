@@ -23,11 +23,15 @@ class TestRedirectsEnricher(unittest.TestCase):
         def _fake_urlopen(req, timeout=0):  # noqa: ARG001
             calls["n"] += 1
             if calls["n"] == 1:
-                return SimpleNamespace(status=301, headers={"Location": "https://www.example.com/"}, read=lambda: b"")
+                return SimpleNamespace(
+                    status=301, headers={"Location": "https://www.example.com/"}, read=lambda: b""
+                )
             return SimpleNamespace(status=200, headers={}, read=lambda: b"")
 
         with patch("url_reputation.enrichment.redirects.urlopen", _fake_urlopen):
-            out = e.enrich("http://example.com", EnrichmentContext(timeout=10, indicator_type="url"))
+            out = e.enrich(
+                "http://example.com", EnrichmentContext(timeout=10, indicator_type="url")
+            )
 
         self.assertIn("chain", out)
         self.assertIsInstance(out["chain"], list)
@@ -37,4 +41,3 @@ class TestRedirectsEnricher(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

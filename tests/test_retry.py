@@ -15,7 +15,9 @@ class TestRetry(unittest.TestCase):
 
         out = retry_call(
             fn,
-            policy=RetryPolicy(retries=3, base_delay_seconds=0.0, max_delay_seconds=0.0, jitter=0.0),
+            policy=RetryPolicy(
+                retries=3, base_delay_seconds=0.0, max_delay_seconds=0.0, jitter=0.0
+            ),
             should_retry=lambda e: True,
         )
         self.assertEqual(out, 42)
@@ -31,7 +33,9 @@ class TestRetry(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             retry_call(
                 fn,
-                policy=RetryPolicy(retries=3, base_delay_seconds=0.0, max_delay_seconds=0.0, jitter=0.0),
+                policy=RetryPolicy(
+                    retries=3, base_delay_seconds=0.0, max_delay_seconds=0.0, jitter=0.0
+                ),
                 should_retry=lambda e: False,
             )
 

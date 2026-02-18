@@ -14,5 +14,5 @@ class TestProfiles(unittest.TestCase):
         self.assertTrue(len(p.providers) >= 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -30,17 +30,19 @@ uvx --from git+https://github.com/newuni/url-reputation url-reputation "https://
 pip install git+https://github.com/newuni/url-reputation
 
 # From wheel (download from releases)
-pip install url_reputation-1.6.0-py3-none-any.whl
+pip install url_reputation-<VERSION>-py3-none-any.whl
 ```
 
 ### Download wheel
 
 📦 [Download wheel from releases](https://github.com/newuni/url-reputation/releases/latest)
 
+For release history and migration notes, see [CHANGELOG.md](CHANGELOG.md).
+
 ```bash
-# Download and install
-curl -LO https://github.com/newuni/url-reputation/releases/download/v1.6.0/url_reputation-1.6.0-py3-none-any.whl
-pip install url_reputation-1.6.0-py3-none-any.whl
+# Download latest wheel and install
+gh release download --repo newuni/url-reputation --pattern "*.whl" --clobber
+pip install url_reputation-*.whl
 url-reputation "https://example.com"
 ```
 
@@ -700,7 +702,7 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 
 ## Roadmap
 
-### ✅ Completed in v1.6.0
+### ✅ Recently completed
 
 - [x] **Test coverage & property-based tests** - pytest-cov, hypothesis
 - [x] **Integration test suite** - HTTP mocks, fixtures
@@ -711,7 +713,7 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 - [x] **Provider comparison** - docs/performance/provider_comparison.md
 - [x] **CI/CD** - GitHub Actions for tests, release, PyPI publish
 
-### ✅ Previously Completed
+### ✅ Earlier completed
 
 - [x] **Config file** - `.env` support for API keys
 - [x] **Webhook notifications** - HMAC-signed webhooks on risk detection

@@ -153,6 +153,7 @@ def _sort_ips(ips: list[str]) -> list[str]:
             out.append((ip.version, str(ip)))
         except Exception:
             continue
+
     # Within each IP version, sort by packed bytes for deterministic ordering.
     def _key(t: tuple[int, str]):
         v, s = t
@@ -374,7 +375,9 @@ def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], 
     return geo, None
 
 
-def _coverage(ips: list[str], asn: Optional[dict[str, Any]], geo: Optional[dict[str, Any]]) -> list[str]:
+def _coverage(
+    ips: list[str], asn: Optional[dict[str, Any]], geo: Optional[dict[str, Any]]
+) -> list[str]:
     cov: list[str] = []
     if ips:
         cov.append("ips")
@@ -465,7 +468,10 @@ class AsnGeoEnricher(Enricher):
             if not ips:
                 notes.append("no_a_aaaa_records")
         else:
-            return {"skipped": True, "reason": "asn_geo enrichment requires indicator_type=domain|ip|url"}
+            return {
+                "skipped": True,
+                "reason": "asn_geo enrichment requires indicator_type=domain|ip|url",
+            }
 
         ips = _sort_ips(ips)
 

@@ -55,7 +55,9 @@ def _round_half_up(x: float) -> int:
     return int(x + 0.5)
 
 
-def load_provider_weights_from_env(env_var: str = "URL_REPUTATION_PROVIDER_WEIGHTS") -> dict[str, float]:
+def load_provider_weights_from_env(
+    env_var: str = "URL_REPUTATION_PROVIDER_WEIGHTS",
+) -> dict[str, float]:
     """Load provider weights from a JSON env var.
 
     Example:
@@ -170,7 +172,9 @@ def aggregate_risk_score(
 ) -> AggregatedScore:
     """Aggregate provider results (+ optional enrichment) into an explainable score."""
 
-    weights = dict(provider_weights) if provider_weights is not None else load_provider_weights_from_env()
+    weights = (
+        dict(provider_weights) if provider_weights is not None else load_provider_weights_from_env()
+    )
 
     contribs: list[ScoreContribution] = []
 
@@ -185,7 +189,11 @@ def aggregate_risk_score(
         if provider == "virustotal":
             detected = payload.get("detected", 0) or 0
             total = payload.get("total", 70) or 70
-            if isinstance(detected, (int, float)) and isinstance(total, (int, float)) and detected > 0:
+            if (
+                isinstance(detected, (int, float))
+                and isinstance(total, (int, float))
+                and detected > 0
+            ):
                 ratio = float(detected) / max(float(total), 1.0)
                 pts = int(ratio * 50)
                 _add_contribution(
@@ -206,7 +214,10 @@ def aggregate_risk_score(
                 points=THREAT_WEIGHTS["malware"],
                 weights=weights,
                 reason="URLhaus listing (malware)",
-                evidence={"match_type": payload.get("match_type"), "threat_type": payload.get("threat_type")},
+                evidence={
+                    "match_type": payload.get("match_type"),
+                    "threat_type": payload.get("threat_type"),
+                },
             )
 
         elif provider == "phishtank" and bool(payload.get("listed")):
@@ -325,7 +336,9 @@ def aggregate_risk_score(
                 )
             else:
                 rs = payload.get("risk_score", 0) or 0
-                if bool(payload.get("suspicious")) or (isinstance(rs, (int, float)) and float(rs) >= 75):
+                if bool(payload.get("suspicious")) or (
+                    isinstance(rs, (int, float)) and float(rs) >= 75
+                ):
                     _add_contribution(
                         contribs,
                         rule_id="provider.ipqualityscore.suspicious",
@@ -363,7 +376,11 @@ def aggregate_risk_score(
                         initial_url = first.get("url")
                 final_url = redirects.get("final_url")
                 if isinstance(initial_url, str) and isinstance(final_url, str):
-                    if _host(initial_url) and _host(final_url) and _host(initial_url) != _host(final_url):
+                    if (
+                        _host(initial_url)
+                        and _host(final_url)
+                        and _host(initial_url) != _host(final_url)
+                    ):
                         pts += 5
                         why = why + " (cross-domain)"
 
@@ -409,7 +426,10 @@ def aggregate_risk_score(
                         points=pts,
                         weights=weights,
                         reason=why,
-                        evidence={"domain_age_days": age_i, "creation_date": whois.get("creation_date")},
+                        evidence={
+                            "domain_age_days": age_i,
+                            "creation_date": whois.get("creation_date"),
+                        },
                     )
 
     # Deterministic ordering for explainability outputs.

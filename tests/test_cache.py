@@ -53,5 +53,5 @@ class TestCache(unittest.TestCase):
         self.assertEqual(k1, k2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -21,7 +21,7 @@ def _get_domain(url: str) -> str:
     """Extract domain from URL."""
     try:
         parsed = urlparse(url)
-        return parsed.netloc or parsed.path.split('/')[0]
+        return parsed.netloc or parsed.path.split("/")[0]
     except:
         return url
 
@@ -42,7 +42,7 @@ def _load_cache() -> tuple[Optional[dict[str, Any]], float]:
 def _save_cache(data: dict[str, Any]) -> None:
     """Save data to cache."""
     try:
-        with open(CACHE_FILE, 'w') as f:
+        with open(CACHE_FILE, "w") as f:
             json.dump(data, f)
     except:
         pass
@@ -54,78 +54,78 @@ def _fetch_urlhaus_data(timeout: int = 30) -> dict:
     cached, _ = _load_cache()
     if cached:
         return cached
-    
+
     # Fetch online URLs (smaller, faster)
     url = "https://urlhaus.abuse.ch/downloads/json_online/"
-    
+
     try:
         req = urllib.request.Request(url)
-        req.add_header('User-Agent', 'url-reputation-checker/1.0')
-        
+        req.add_header("User-Agent", "url-reputation-checker/1.0")
+
         with urllib.request.urlopen(req, timeout=timeout) as response:
             # It's a zip file, but let's try the text version instead
             pass
     except:
         pass
-    
+
     # Try plaintext version (simpler)
     text_url = "https://urlhaus.abuse.ch/downloads/text_online/"
-    
+
     try:
         req = urllib.request.Request(text_url)
-        req.add_header('User-Agent', 'url-reputation-checker/1.0')
-        
+        req.add_header("User-Agent", "url-reputation-checker/1.0")
+
         with urllib.request.urlopen(req, timeout=timeout) as response:
-            content = response.read().decode('utf-8')
-        
+            content = response.read().decode("utf-8")
+
         # Parse URLs into a set for fast lookup
         urls = set()
         domains = set()
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             line = line.strip()
-            if line and not line.startswith('#'):
+            if line and not line.startswith("#"):
                 urls.add(line.lower())
                 domains.add(_get_domain(line).lower())
-        
-        data = {'urls': list(urls), 'domains': list(domains)}
+
+        data = {"urls": list(urls), "domains": list(domains)}
         _save_cache(data)
         return data
-        
+
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
     Check URL against URLhaus database.
-    
+
     Returns:
         dict with 'listed', 'match_type', etc.
     """
     data = _fetch_urlhaus_data(timeout)
-    
-    if 'error' in data:
+
+    if "error" in data:
         return data
-    
+
     url_lower = url.lower()
     domain_lower = domain.lower()
-    
+
     # Check exact URL match
-    urls = set(data.get('urls', []))
+    urls = set(data.get("urls", []))
     if url_lower in urls:
         return {
-            'listed': True,
-            'match_type': 'exact_url',
-            'threat_type': 'malware_download',
+            "listed": True,
+            "match_type": "exact_url",
+            "threat_type": "malware_download",
         }
-    
+
     # Check domain match
-    domains = set(data.get('domains', []))
+    domains = set(data.get("domains", []))
     if domain_lower in domains:
         return {
-            'listed': True,
-            'match_type': 'domain',
-            'threat_type': 'malware_host',
+            "listed": True,
+            "match_type": "domain",
+            "threat_type": "malware_host",
         }
-    
-    return {'listed': False}
+
+    return {"listed": False}

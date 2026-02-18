@@ -27,7 +27,9 @@ def _sleep_seconds(attempt: int, policy: RetryPolicy) -> float:
     return max(0.0, delay * factor)
 
 
-def retry_call(fn: Callable[[], T], policy: RetryPolicy, should_retry: Callable[[Exception], bool]) -> T:
+def retry_call(
+    fn: Callable[[], T], policy: RetryPolicy, should_retry: Callable[[Exception], bool]
+) -> T:
     """Call fn with retries.
 
     - Retries on exceptions that satisfy should_retry.

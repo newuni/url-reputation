@@ -72,6 +72,7 @@ jobs:
     name: Publish to PyPI
     runs-on: ubuntu-latest
     needs: build
+    if: vars.PYPI_PUBLISH_ENABLED == 'true'
     environment:
       name: pypi
       url: https://pypi.org/p/url-reputation
@@ -91,7 +92,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build, publish-pypi]
+    needs: [build]
 
     steps:
       - name: Checkout repository

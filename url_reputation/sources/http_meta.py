@@ -65,4 +65,3 @@ def error_meta(err: Any) -> dict[str, Any]:
     if h:
         meta["headers"] = h
     return meta
-

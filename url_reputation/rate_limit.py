@@ -85,7 +85,9 @@ def _pick(ci: Mapping[str, tuple[str, str]], candidates_lc: list[str]) -> tuple[
     return None
 
 
-def _parse_retry_after(headers: Mapping[str, str], *, now: datetime) -> tuple[int | None, datetime | None]:
+def _parse_retry_after(
+    headers: Mapping[str, str], *, now: datetime
+) -> tuple[int | None, datetime | None]:
     ci = _header_map(headers)
     hit = ci.get("retry-after")
     if hit is None:
@@ -113,7 +115,9 @@ def _parse_retry_after(headers: Mapping[str, str], *, now: datetime) -> tuple[in
         return None, None
 
 
-def _parse_limit_remaining_reset(headers: Mapping[str, str], *, now: datetime) -> tuple[int | None, int | None, datetime | None]:
+def _parse_limit_remaining_reset(
+    headers: Mapping[str, str], *, now: datetime
+) -> tuple[int | None, int | None, datetime | None]:
     """Parse common limit/remaining/reset header triplets.
 
     Supports both legacy X-* and RFC-ish RateLimit-* forms.
@@ -205,7 +209,10 @@ def parse_rate_limit_info(
     if reset_at is not None:
         reset_in_ms = int(max(0.0, (reset_at - now).total_seconds()) * 1000)
 
-    if all(v is None for v in (limit, remaining, reset_at, reset_in_ms, retry_after_ms)) and not raw:
+    if (
+        all(v is None for v in (limit, remaining, reset_at, reset_in_ms, retry_after_ms))
+        and not raw
+    ):
         return None
 
     return RateLimitInfo(
@@ -217,4 +224,3 @@ def parse_rate_limit_info(
         raw=raw,
         provider=provider,
     )
-

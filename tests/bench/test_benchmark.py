@@ -55,10 +55,7 @@ class MockProvider(Provider):
 def mock_registry():
     """Create a mock registry with fast providers."""
     registry = MagicMock()
-    providers = [
-        MockProvider(f"provider_{i}", delay_ms=1)
-        for i in range(3)
-    ]
+    providers = [MockProvider(f"provider_{i}", delay_ms=1) for i in range(3)]
     registry.get_providers.return_value = providers
     return registry
 
@@ -79,10 +76,7 @@ def mock_registry_free():
 def mock_registry_thorough():
     """Create a mock registry simulating thorough profile (more providers)."""
     registry = MagicMock()
-    providers = [
-        MockProvider(f"provider_{i}", delay_ms=1)
-        for i in range(8)
-    ]
+    providers = [MockProvider(f"provider_{i}", delay_ms=1) for i in range(8)]
     registry.get_providers.return_value = providers
     return registry
 
@@ -90,6 +84,7 @@ def mock_registry_thorough():
 @pytest.mark.benchmark(group="throughput")
 def test_throughput_single_url(benchmark):
     """Benchmark throughput for single URL check."""
+
     async def check_single():
         result = {"verdict": "CLEAN", "risk_score": 0}
         return result
@@ -105,6 +100,7 @@ def test_throughput_single_url(benchmark):
 @pytest.mark.benchmark(group="throughput")
 def test_throughput_batch_10_urls(benchmark):
     """Benchmark throughput for batch of 10 URLs."""
+
     async def check_batch():
         results = []
         for url in SAMPLE_URLS[:10]:
@@ -141,6 +137,7 @@ def test_throughput_batch_50_urls(benchmark):
 @pytest.mark.benchmark(group="latency")
 def test_latency_p50_single_check(benchmark):
     """Benchmark median latency for single URL check."""
+
     async def check_with_latency():
         await asyncio.sleep(0.001)  # Simulate 1ms latency
         return {"verdict": "CLEAN", "risk_score": 0}
@@ -155,6 +152,7 @@ def test_latency_p50_single_check(benchmark):
 @pytest.mark.benchmark(group="latency")
 def test_latency_profile_fast(benchmark):
     """Benchmark latency for 'fast' profile."""
+
     async def check_fast_profile():
         await asyncio.sleep(0.005)  # Simulate 5ms total
         return {"verdict": "CLEAN", "risk_score": 0}
@@ -169,6 +167,7 @@ def test_latency_profile_fast(benchmark):
 @pytest.mark.benchmark(group="latency")
 def test_latency_profile_thorough(benchmark):
     """Benchmark latency for 'thorough' profile."""
+
     async def check_thorough_profile():
         await asyncio.sleep(0.015)  # Simulate 15ms total
         return {"verdict": "CLEAN", "risk_score": 0}
@@ -183,6 +182,7 @@ def test_latency_profile_thorough(benchmark):
 @pytest.mark.benchmark(group="latency")
 def test_latency_profile_free(benchmark):
     """Benchmark latency for 'free' profile."""
+
     async def check_free_profile():
         await asyncio.sleep(0.008)  # Simulate 8ms total
         return {"verdict": "CLEAN", "risk_score": 0}
@@ -197,10 +197,9 @@ def test_latency_profile_free(benchmark):
 @pytest.mark.benchmark(group="comparison")
 def test_profile_comparison_fast(benchmark):
     """Compare performance: fast profile."""
+
     async def simulate_fast():
-        await asyncio.gather(
-            *[asyncio.sleep(0.01) for _ in range(3)]
-        )
+        await asyncio.gather(*[asyncio.sleep(0.01) for _ in range(3)])
         return {"profile": "fast", "providers": 3}
 
     def run_check():
@@ -213,10 +212,9 @@ def test_profile_comparison_fast(benchmark):
 @pytest.mark.benchmark(group="comparison")
 def test_profile_comparison_thorough(benchmark):
     """Compare performance: thorough profile."""
+
     async def simulate_thorough():
-        await asyncio.gather(
-            *[asyncio.sleep(0.015) for _ in range(8)]
-        )
+        await asyncio.gather(*[asyncio.sleep(0.015) for _ in range(8)])
         return {"profile": "thorough", "providers": 8}
 
     def run_check():
@@ -229,10 +227,9 @@ def test_profile_comparison_thorough(benchmark):
 @pytest.mark.benchmark(group="comparison")
 def test_profile_comparison_free(benchmark):
     """Compare performance: free profile."""
+
     async def simulate_free():
-        await asyncio.gather(
-            *[asyncio.sleep(0.01) for _ in range(2)]
-        )
+        await asyncio.gather(*[asyncio.sleep(0.01) for _ in range(2)])
         return {"profile": "free", "providers": 2}
 
     def run_check():
@@ -245,6 +242,7 @@ def test_profile_comparison_free(benchmark):
 @pytest.mark.benchmark(group="stress")
 def test_stress_100_checks(benchmark):
     """Stress test: 100 sequential checks."""
+
     async def stress_check():
         results = []
         for _ in range(100):
@@ -262,6 +260,7 @@ def test_stress_100_checks(benchmark):
 @pytest.mark.benchmark(group="memory")
 def test_memory_footprint_single(benchmark):
     """Benchmark memory for single check."""
+
     def create_result():
         return {
             "schema_version": "1",
@@ -278,6 +277,7 @@ def test_memory_footprint_single(benchmark):
 @pytest.mark.benchmark(group="memory")
 def test_memory_footprint_batch_1000(benchmark):
     """Benchmark memory for 1000 URL results."""
+
     def create_batch_results():
         return [
             {
