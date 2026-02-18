@@ -12,8 +12,8 @@
 
 - Repo: https://github.com/newuni/url-reputation
 - Local path on this host: `/root/clawd/skills/url-reputation`
-- Latest release: **v1.6.0** (Polish phase: tests, docs, performance, CI/CD)
-- Previous release: v1.5.0 (T13-T19 improvements)
+- Latest release: **v1.7.0** (quality hardening phase: mypy/ruff tightened in progressive blocks)
+- Previous release: v1.6.0 (Polish phase: tests, docs, performance, CI/CD)
 - Primary focus: **Developer-first unified URL/domain/IP reputation library** (multi-provider “front door”).
 
 ## Vision
@@ -620,3 +620,41 @@ Future hardening (optional):
 
 ### Deferred-by-design
 - None for current `UP/SIM` hardening track ✅
+
+---
+
+## Phase 11 — Post-1.7 hardening (next blocks)
+
+Execution mode: continue in blocks, but run multiple blocks per cycle when safe.
+
+### Block H (proposed)
+
+#### Q13 — Ruff: add `RET` family (returns)
+- **Status:** TODO
+- **Deliverables:**
+  - Add `RET` to Ruff `select`
+  - Apply safe fixes and resolve remaining findings with minimal behavior changes
+- **DoD:** `ruff check .` green with `RET` enabled
+
+#### Q14 — Ruff: add `C4` family (comprehensions)
+- **Status:** TODO
+- **Deliverables:**
+  - Add `C4` to Ruff `select`
+  - Refactor only where readability is preserved
+- **DoD:** `ruff check .` green with `C4` enabled
+
+### Block I (proposed)
+
+#### Q15 — Coverage gate in CI (initial threshold)
+- **Status:** TODO
+- **Deliverables:**
+  - Enforce `--cov-fail-under=80` in CI
+  - Document threshold policy and raise plan (80 → 85 → 90)
+- **DoD:** CI enforces coverage floor and remains green
+
+#### Q16 — Raise coverage threshold to 85 (if Q15 stable)
+- **Status:** TODO
+- **Deliverables:**
+  - Increase floor to 85 after gap fixes
+  - Add missing tests where needed
+- **DoD:** CI green with 85% floor
