@@ -10,7 +10,7 @@ import threading
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 # Load .env file if present
@@ -121,12 +121,12 @@ def calculate_risk_score(results: dict) -> tuple[int, str]:
 
 def check_url_reputation(
     url: str,
-    sources: Optional[list[str]] = None,
+    sources: list[str] | None = None,
     timeout: int = 30,
     *,
     cache_path: str | None = None,
     cache_ttl_seconds: int | None = None,
-    enrichment_types: Optional[list[str]] = None,
+    enrichment_types: list[str] | None = None,
 ) -> dict[str, Any]:
     """Check reputation across multiple sources.
 
@@ -304,7 +304,7 @@ def check_url_reputation(
 
 
 def check_urls_batch(
-    urls: list[str], sources: Optional[list[str]] = None, timeout: int = 30, max_workers: int = 5
+    urls: list[str], sources: list[str] | None = None, timeout: int = 30, max_workers: int = 5
 ) -> list[dict[str, Any]]:
     """
     Check multiple URLs in parallel.

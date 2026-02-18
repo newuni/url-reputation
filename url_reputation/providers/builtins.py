@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable
-from typing import Any, Optional
+from typing import Any
 
 from ..sources import (
     abuseipdb,
@@ -26,7 +26,7 @@ class _FnProvider(Provider):
         self,
         name: str,
         fn: Callable[[str, str, int], Any],
-        available_fn: Optional[Callable[[], object]] = None,
+        available_fn: Callable[[], object] | None = None,
         *,
         max_concurrency: int = 5,
         retry_retries: int = 2,

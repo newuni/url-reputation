@@ -16,7 +16,7 @@ import json
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 from .models import Verdict
@@ -137,7 +137,7 @@ def _add_contribution(
     points: int,
     weights: Mapping[str, float],
     reason: str,
-    evidence: Optional[dict[str, Any]] = None,
+    evidence: dict[str, Any] | None = None,
 ) -> None:
     if points <= 0:
         return
@@ -168,8 +168,8 @@ def _host(url: str) -> str:
 def aggregate_risk_score(
     results: Mapping[str, Mapping[str, Any]],
     *,
-    enrichment: Optional[Mapping[str, Any]] = None,
-    provider_weights: Optional[Mapping[str, float]] = None,
+    enrichment: Mapping[str, Any] | None = None,
+    provider_weights: Mapping[str, float] | None = None,
 ) -> AggregatedScore:
     """Aggregate provider results (+ optional enrichment) into an explainable score."""
 
@@ -400,7 +400,7 @@ def aggregate_risk_score(
         if isinstance(whois, Mapping):
             age_days = whois.get("domain_age_days")
             # Some WHOIS implementations may return strings; ignore for scoring.
-            age_i: Optional[int] = int(age_days) if isinstance(age_days, (int, float)) else None
+            age_i: int | None = int(age_days) if isinstance(age_days, (int, float)) else None
 
             if age_i is not None and age_i >= 0:
                 if age_i < 7:

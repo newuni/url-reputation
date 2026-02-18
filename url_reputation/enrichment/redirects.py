@@ -10,7 +10,7 @@ that do not support HEAD properly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
@@ -21,7 +21,7 @@ from .base import Enricher, EnrichmentContext
 class RedirectStep:
     url: str
     status: int
-    location: Optional[str] = None
+    location: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {"url": self.url, "status": self.status, "location": self.location}
@@ -63,7 +63,7 @@ class RedirectsEnricher(Enricher):
         }
 
 
-def _fetch_redirect(url: str, *, timeout: int) -> tuple[int, Optional[str]]:
+def _fetch_redirect(url: str, *, timeout: int) -> tuple[int, str | None]:
     """Return (status, location) for a single request without following redirects."""
 
     # We do not let urllib follow redirects. If a redirect happens, urlopen will

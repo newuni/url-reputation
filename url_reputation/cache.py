@@ -18,7 +18,7 @@ import sqlite3
 import time
 from contextlib import closing
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 
 def default_cache_path() -> str:
@@ -35,7 +35,7 @@ def make_cache_key(
     schema_version: str,
     indicator_canonical: str,
     providers: list[str],
-    enrich: Optional[list[str]] = None,
+    enrich: list[str] | None = None,
 ) -> str:
     providers_key = ",".join(sorted(providers))
     enrich_key = ",".join(sorted(enrich or []))
@@ -79,7 +79,7 @@ class Cache:
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
 
-    def get(self, key: str, ttl_seconds: int) -> Optional[dict[str, Any]]:
+    def get(self, key: str, ttl_seconds: int) -> dict[str, Any] | None:
         now = time.time()
         with closing(self._connect()) as con:
             row = con.execute(

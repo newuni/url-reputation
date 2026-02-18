@@ -7,7 +7,7 @@ It must be safe to run in parallel.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from ..rate_limit import parse_rate_limit_info
 
@@ -44,7 +44,7 @@ class Provider:
         """
         raise NotImplementedError
 
-    def parse_rate_limit(self, payload: dict[str, Any]) -> Optional[dict[str, Any]]:
+    def parse_rate_limit(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         """Extract rate-limit metadata from a provider payload when possible.
 
         Built-in sources attach a JSON-safe HTTP metadata blob under `_http`.

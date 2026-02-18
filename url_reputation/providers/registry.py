@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib import metadata
-from typing import Any, Optional
+from typing import Any
 
 from .base import Provider
 
@@ -69,7 +69,7 @@ class Registry:
 
     def select(
         self,
-        names: Optional[Iterable[str]] = None,
+        names: Iterable[str] | None = None,
         *,
         only_available: bool = True,
     ) -> list[Provider]:

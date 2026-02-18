@@ -609,7 +609,14 @@ Future hardening (optional):
   - Replaced remaining `try/except/pass` simplification cases via safe Ruff fixes
 - **DoD:** `ruff check .` green without ignoring `SIM105`
 
-The following rule remains intentionally deferred to avoid high-noise diffs:
-- `UP045` (`Optional[T]` → `T | None` mass migration)
+### Block G (done)
 
-Decision: resolve incrementally in a dedicated cleanup block, updating this status doc after completion.
+#### Q12 — Resolve deferred `UP045` (`Optional[T]` → `T | None`)
+- **Status:** DONE
+- **Deliverables:**
+  - Performed project-wide migration to modern union syntax for optional types
+  - Cleaned follow-up unused imports from migration
+- **DoD:** `ruff check .` green without ignoring `UP045`
+
+### Deferred-by-design
+- None for current `UP/SIM` hardening track ✅

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 from importlib import metadata
-from typing import Any, Optional
+from typing import Any
 
 from .base import Enricher
 
@@ -70,7 +70,7 @@ class EnrichmentRegistry:
     def list_names(self) -> list[str]:
         return sorted(self.enrichers.keys())
 
-    def select(self, names: Optional[Iterable[str]] = None) -> list[Enricher]:
+    def select(self, names: Iterable[str] | None = None) -> list[Enricher]:
         if names is None:
             names = self.list_names()
         selected = []

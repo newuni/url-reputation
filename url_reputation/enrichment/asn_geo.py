@@ -20,7 +20,7 @@ import os
 import socket
 import time
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -47,7 +47,7 @@ class _TTLCache:
     def __post_init__(self) -> None:
         self._d: dict[str, tuple[float, dict[str, Any]]] = {}
 
-    def get(self, key: str) -> Optional[dict[str, Any]]:
+    def get(self, key: str) -> dict[str, Any] | None:
         v = self._d.get(key)
         if not v:
             return None
@@ -73,7 +73,7 @@ _CYMRU_CACHE = _TTLCache(ttl_seconds=_DEFAULT_TTL, max_items=2048)
 _IPAPI_CACHE = _TTLCache(ttl_seconds=_DEFAULT_TTL, max_items=2048)
 
 
-def _safe_int(x: Any) -> Optional[int]:
+def _safe_int(x: Any) -> int | None:
     try:
         if x is None:
             return None
@@ -169,7 +169,7 @@ def _sort_ips(ips: list[str]) -> list[str]:
     return [s for _, s in sorted(out, key=_key)]
 
 
-def _ripe_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+def _ripe_lookup(ip: str, *, timeout: int) -> tuple[dict[str, Any] | None, str | None]:
     """Return (asn_dict, note)."""
     ck = f"ripe:{ip}"
     cached = _RIPE_CACHE.get(ck)
@@ -186,10 +186,10 @@ def _ripe_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], Op
 
     data = j.get("data") or {}
 
-    asn_num: Optional[int] = None
-    asn_name: Optional[str] = None
-    asn_org: Optional[str] = None
-    prefix: Optional[str] = None
+    asn_num: int | None = None
+    asn_name: str | None = None
+    asn_org: str | None = None
+    prefix: str | None = None
 
     # Flexible parsing; RIPEstat shape can vary by endpoint/version.
     try:
@@ -237,7 +237,7 @@ def _ripe_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], Op
     return asn, None
 
 
-def _cymru_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+def _cymru_lookup(ip: str, *, timeout: int) -> tuple[dict[str, Any] | None, str | None]:
     """Return (asn_dict, note)."""
     ck = f"cymru:{ip}"
     cached = _CYMRU_CACHE.get(ck)
@@ -274,10 +274,10 @@ def _cymru_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], O
     except Exception:
         decoded = ""
 
-    asn_num: Optional[int] = None
-    prefix: Optional[str] = None
-    cc: Optional[str] = None
-    as_name: Optional[str] = None
+    asn_num: int | None = None
+    prefix: str | None = None
+    cc: str | None = None
+    as_name: str | None = None
 
     # Expect one line like:
     # ASN | IP | BGP Prefix | CC | Registry | Allocated | AS Name
@@ -309,7 +309,7 @@ def _cymru_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], O
     return asn, None
 
 
-def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], Optional[str]]:
+def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[dict[str, Any] | None, str | None]:
     """Return (geo_dict, note)."""
     ck = f"ipapi:{ip}"
     cached = _IPAPI_CACHE.get(ck)
@@ -378,7 +378,7 @@ def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], 
 
 
 def _coverage(
-    ips: list[str], asn: Optional[dict[str, Any]], geo: Optional[dict[str, Any]]
+    ips: list[str], asn: dict[str, Any] | None, geo: dict[str, Any] | None
 ) -> list[str]:
     cov: list[str] = []
     if ips:
@@ -405,8 +405,8 @@ def _coverage(
 def _quality(
     *,
     ips: list[str],
-    asn: Optional[dict[str, Any]],
-    geo: Optional[dict[str, Any]],
+    asn: dict[str, Any] | None,
+    geo: dict[str, Any] | None,
     sources: list[str],
     notes: list[str],
 ) -> dict[str, Any]:
@@ -482,8 +482,8 @@ class AsnGeoEnricher(Enricher):
         if len(ips) > 1:
             notes.append("multiple_ips_using_first_for_lookups")
 
-        asn: Optional[dict[str, Any]] = None
-        geo: Optional[dict[str, Any]] = None
+        asn: dict[str, Any] | None = None
+        geo: dict[str, Any] | None = None
 
         if _is_offline():
             notes.append("offline_mode_enabled")

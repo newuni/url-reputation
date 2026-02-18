@@ -12,7 +12,7 @@ See docs/schema-v1.md.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 IndicatorType = Literal["url", "domain", "ip"]
 Verdict = Literal["CLEAN", "LOW_RISK", "MEDIUM_RISK", "HIGH_RISK", "ERROR"]
@@ -32,14 +32,14 @@ class IndicatorV1:
     canonical: str
 
     # Convenience: extracted parts when applicable
-    domain: Optional[str] = None
+    domain: str | None = None
 
 
 @dataclass(frozen=True)
 class RateLimitV1:
-    limit: Optional[int] = None
-    remaining: Optional[int] = None
-    reset_at: Optional[str] = None  # ISO-8601 timestamp
+    limit: int | None = None
+    remaining: int | None = None
+    reset_at: str | None = None  # ISO-8601 timestamp
 
 
 @dataclass(frozen=True)
@@ -51,16 +51,16 @@ class SourceResultV1:
 
     # Provider-specific verdict/flags are provider-defined, but we try to expose
     # a couple of common fields.
-    listed: Optional[bool] = None
-    score: Optional[float] = None
+    listed: bool | None = None
+    score: float | None = None
 
     # Raw provider payload (JSON-serializable dict) for transparency/debug.
     raw: dict[str, Any] = field(default_factory=dict)
 
-    error: Optional[str] = None
-    rate_limit: Optional[RateLimitV1] = None
+    error: str | None = None
+    rate_limit: RateLimitV1 | None = None
     # Rich rate-limit metadata (when available). JSON-safe dict derived from RateLimitInfo.
-    rate_limit_info: Optional[dict[str, Any]] = None
+    rate_limit_info: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ class ResultV1:
 
     sources: list[SourceResultV1]
 
-    enrichment: Optional[dict[str, Any]] = None
+    enrichment: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
