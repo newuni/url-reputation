@@ -2,17 +2,21 @@
 Tests for DNS and Whois enrichment.
 """
 
+import importlib
 import socket
 import unittest
 from unittest.mock import MagicMock, patch
 
-from url_reputation.enrich import enrich, enrich_dns, enrich_whois
+enrich_module = importlib.import_module("url_reputation.enrich")
+enrich = enrich_module.enrich
+enrich_dns = enrich_module.enrich_dns
+enrich_whois = enrich_module.enrich_whois
 
 
 class TestEnrichDNS(unittest.TestCase):
     """Tests for DNS enrichment."""
 
-    @patch("url_reputation.enrich.socket.getaddrinfo")
+    @patch("socket.getaddrinfo")
     def test_basic_a_record(self, mock_getaddrinfo):
         # Force socket fallback (dnspython path bypasses socket.getaddrinfo)
         with patch.dict("sys.modules", {"dns": None}):
@@ -26,7 +30,7 @@ class TestEnrichDNS(unittest.TestCase):
         self.assertIn("a_records", result)
         self.assertEqual(result["a_records"], ["93.184.216.34"])
 
-    @patch("url_reputation.enrich.socket.getaddrinfo")
+    @patch("socket.getaddrinfo")
     def test_multiple_a_records(self, mock_getaddrinfo):
         # Force socket fallback (dnspython path bypasses socket.getaddrinfo)
         with patch.dict("sys.modules", {"dns": None}):
@@ -40,7 +44,7 @@ class TestEnrichDNS(unittest.TestCase):
         self.assertIn("1.1.1.1", result["a_records"])
         self.assertIn("2.2.2.2", result["a_records"])
 
-    @patch("url_reputation.enrich.socket.getaddrinfo")
+    @patch("socket.getaddrinfo")
     def test_no_records(self, mock_getaddrinfo):
         # Force socket fallback (dnspython path bypasses socket.getaddrinfo)
         with patch.dict("sys.modules", {"dns": None}):
@@ -73,7 +77,7 @@ class TestEnrichWhois(unittest.TestCase):
         self.assertIn("domain_age_days", result)
         self.assertIn("is_new_domain", result)
 
-    @patch("url_reputation.enrich.subprocess.run")
+    @patch("subprocess.run")
     def test_whois_cli_fallback(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -92,7 +96,7 @@ Registrant Country: US
         # Should have parsed some data
         self.assertIn("creation_date", result)
 
-    @patch("url_reputation.enrich.subprocess.run")
+    @patch("subprocess.run")
     def test_whois_cli_not_found(self, mock_run):
         mock_run.side_effect = FileNotFoundError()
 
@@ -106,8 +110,8 @@ Registrant Country: US
 class TestEnrich(unittest.TestCase):
     """Tests for combined enrichment."""
 
-    @patch("url_reputation.enrich.enrich_dns")
-    @patch("url_reputation.enrich.enrich_whois")
+    @patch.object(enrich_module, "enrich_dns")
+    @patch.object(enrich_module, "enrich_whois")
     def test_enrich_all(self, mock_whois, mock_dns):
         mock_dns.return_value = {
             "a_records": ["1.2.3.4"],
@@ -127,8 +131,8 @@ class TestEnrich(unittest.TestCase):
         mock_dns.assert_called_once()
         mock_whois.assert_called_once()
 
-    @patch("url_reputation.enrich.enrich_dns")
-    @patch("url_reputation.enrich.enrich_whois")
+    @patch.object(enrich_module, "enrich_dns")
+    @patch.object(enrich_module, "enrich_whois")
     def test_enrich_dns_only(self, mock_whois, mock_dns):
         mock_dns.return_value = {"a_records": ["1.2.3.4"]}
 
@@ -139,8 +143,8 @@ class TestEnrich(unittest.TestCase):
         mock_dns.assert_called_once()
         mock_whois.assert_not_called()
 
-    @patch("url_reputation.enrich.enrich_dns")
-    @patch("url_reputation.enrich.enrich_whois")
+    @patch.object(enrich_module, "enrich_dns")
+    @patch.object(enrich_module, "enrich_whois")
     def test_enrich_whois_only(self, mock_whois, mock_dns):
         mock_whois.return_value = {"creation_date": "2020-01-01"}
 
@@ -151,8 +155,8 @@ class TestEnrich(unittest.TestCase):
         mock_whois.assert_called_once()
         mock_dns.assert_not_called()
 
-    @patch("url_reputation.enrich.enrich_dns")
-    @patch("url_reputation.enrich.enrich_whois")
+    @patch.object(enrich_module, "enrich_dns")
+    @patch.object(enrich_module, "enrich_whois")
     def test_risk_indicators_new_domain(self, mock_whois, mock_dns):
         mock_dns.return_value = {
             "a_records": ["1.2.3.4"],
@@ -170,8 +174,8 @@ class TestEnrich(unittest.TestCase):
         self.assertIn("risk_indicators", result)
         self.assertTrue(any("7 days" in i for i in result["risk_indicators"]))
 
-    @patch("url_reputation.enrich.enrich_dns")
-    @patch("url_reputation.enrich.enrich_whois")
+    @patch.object(enrich_module, "enrich_dns")
+    @patch.object(enrich_module, "enrich_whois")
     def test_risk_indicators_no_spf(self, mock_whois, mock_dns):
         mock_dns.return_value = {
             "a_records": ["1.2.3.4"],
@@ -188,8 +192,8 @@ class TestEnrich(unittest.TestCase):
         self.assertIn("risk_indicators", result)
         self.assertTrue(any("SPF" in i for i in result["risk_indicators"]))
 
-    @patch("url_reputation.enrich.enrich_dns")
-    @patch("url_reputation.enrich.enrich_whois")
+    @patch.object(enrich_module, "enrich_dns")
+    @patch.object(enrich_module, "enrich_whois")
     def test_no_risk_indicators_when_clean(self, mock_whois, mock_dns):
         mock_dns.return_value = {
             "a_records": ["1.2.3.4"],

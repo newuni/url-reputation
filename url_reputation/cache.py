@@ -16,6 +16,7 @@ import json
 import os
 import sqlite3
 import time
+from contextlib import closing
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -62,7 +63,7 @@ class Cache:
 
     def __post_init__(self) -> None:
         _ensure_parent_dir(self.path)
-        with self._connect() as con:
+        with closing(self._connect()) as con:
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS cache (
@@ -73,13 +74,14 @@ class Cache:
                 )
                 """
             )
+            con.commit()
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
 
     def get(self, key: str, ttl_seconds: int) -> Optional[dict[str, Any]]:
         now = time.time()
-        with self._connect() as con:
+        with closing(self._connect()) as con:
             row = con.execute(
                 "SELECT value, updated_at FROM cache WHERE key = ?",
                 (key,),
@@ -97,7 +99,7 @@ class Cache:
     def set(self, key: str, value: dict[str, Any]) -> None:
         now = time.time()
         value_json = json.dumps(value, ensure_ascii=False)
-        with self._connect() as con:
+        with closing(self._connect()) as con:
             con.execute(
                 """
                 INSERT INTO cache (key, value, created_at, updated_at)
