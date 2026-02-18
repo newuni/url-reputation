@@ -269,10 +269,12 @@ Goal: external providers can be added without editing core.
 ### Phase 3 — CLI ergonomics + CI integration (improvements)
 
 #### T14 — Report outputs (markdown + summary)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `--format markdown` (single + batch)
   - A one-page summary at end of batch runs (worst verdict, counts by verdict, errors)
+- Notes:
+  - Commit: `2c45aa0` (feat: markdown report output + batch summary (T14))
 
 #### T15 — Batch mode: budget + deterministic ordering option
 - Status: TODO
