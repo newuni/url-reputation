@@ -293,7 +293,7 @@ Goal: external providers can be added without editing core.
   - Output includes a `quality` object: source/confidence/coverage/notes/sources.
   - Registered enricher in `url_reputation/enrichment/builtins.py` as `asn_geo` and alias `asn`.
   - Docs updated: `docs/schema-v1.md`.
-  - Commit: (see git history)  # populated by T16 implementation
+  - Commit: `9cb0a4b` (feat: asn/geo enricher with quality report (T16))
 
 ### Phase 5 — Plugins + ecosystem (improvements)
 
