@@ -261,10 +261,10 @@ Goal: external providers can be added without editing core.
 - Deliverables:
   - For each built-in provider, parse rate-limit headers/fields into `SourceResultV1.rate_limit`
   - Retry policy respects `Retry-After` and reset windows when available
- - Notes:
-   - Added normalized `RateLimitInfo` parsing from provider response headers (GitHub-style `X-RateLimit-*`, generic `Retry-After`).
-   - Built-in HTTP sources now attach response metadata under `_http` so providers can parse headers without network in tests.
-   - Output now includes `sources[].rate_limit_info` (rich, JSON-safe), while keeping `sources[].rate_limit` for backwards compatibility.
+- Notes:
+  - Added normalized `RateLimitInfo` parsing from provider response headers (GitHub-style `X-RateLimit-*`, generic `Retry-After`).
+  - Built-in HTTP sources now attach response metadata under `_http` so providers can parse headers without network in tests.
+  - Output now includes `sources[].rate_limit_info` (rich, JSON-safe), while keeping `sources[].rate_limit` for backwards compatibility.
 
 ### Phase 3 — CLI ergonomics + CI integration (improvements)
 
@@ -302,10 +302,14 @@ Goal: external providers can be added without editing core.
 ### Phase 5 — Plugins + ecosystem (improvements)
 
 #### T17 — Enricher entrypoints loader + docs
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Mirror provider entrypoints: load enrichers from `url_reputation.enrichers`
   - Docs + minimal example package
+- Notes:
+  - Added `EnrichmentRegistry.load_entrypoints()` (best-effort) + `list_names()`.
+  - Updated `docs/plugins.md` with enricher entrypoint usage.
+  - Commit: `f820e78` (feat: enricher entrypoints loader (T17))
 
 ### Maintenance / tightening
 
@@ -330,4 +334,4 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-Next up: **T14 — Report outputs (markdown + summary)**.
+No pending T12–T19 tasks. Add new tasks above when needed.
