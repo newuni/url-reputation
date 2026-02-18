@@ -2,6 +2,8 @@
 
 All JSON outputs **must** include `schema_version: "1"`.
 
+Note: the CLI also supports presentation formats (`--format pretty|markdown`) which are derived from Schema v1 results but are not themselves schema-validated.
+
 ## Top-level
 
 ```json

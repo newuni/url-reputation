@@ -16,6 +16,7 @@ from .output import (
     to_sarif,
     worst_verdict,
 )
+from .markdown import to_markdown_batch, to_markdown_single
 from .webhook import notify_on_risk
 
 
@@ -51,7 +52,7 @@ def main():
     )
     parser.add_argument(
         '--format',
-        choices=['pretty', 'json', 'ndjson', 'sarif'],
+        choices=['pretty', 'json', 'ndjson', 'sarif', 'markdown'],
         default=None,
         help='Output format (default: pretty; --json is an alias for json)'
     )
@@ -152,6 +153,10 @@ def main():
             payload = list(results)
             print(json.dumps(payload, indent=2))
             exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
+        elif out_format == 'markdown':
+            payload = list(results)
+            print(to_markdown_batch(payload))
+            exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
         elif out_format == 'ndjson':
             worst = 'CLEAN'
             for r in results:
@@ -209,6 +214,8 @@ def main():
                     s.get('name'): s.get('raw') for s in result.get('sources', [])
                 }
             print(json.dumps(result, indent=2, ensure_ascii=False))
+        elif out_format == 'markdown':
+            print(to_markdown_single(result))
         elif out_format == 'sarif':
             print(json.dumps(to_sarif([result]), indent=2))
         else:
