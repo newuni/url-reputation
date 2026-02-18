@@ -202,6 +202,202 @@ class TestURLScan(unittest.TestCase):
         self.assertIn("error", result)
         self.assertIn("URLSCAN_API_KEY", result["error"])
 
+    @patch.dict("os.environ", {"URLSCAN_API_KEY": "k"})
+    @patch("url_reputation.sources.urlscan._search_url")
+    def test_check_found_path(self, mock_search):
+        from url_reputation.sources.urlscan import check
+
+        mock_search.return_value = {"found": True, "score": 1}
+        result = check("https://example.com", "example.com")
+        self.assertTrue(result["found"])
+
+    @patch.dict("os.environ", {"URLSCAN_API_KEY": "k"})
+    @patch("url_reputation.sources.urlscan.urllib.request.urlopen")
+    def test_submit_scan(self, mock_urlopen):
+        import json
+
+        from url_reputation.sources.urlscan import _submit_scan
+
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"uuid": "u-1", "result": "https://urlscan.io/result/u-1"}
+        ).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = _submit_scan("https://example.com", "k")
+        self.assertTrue(result["submitted"])
+        self.assertEqual(result["scan_uuid"], "u-1")
+
+
+class TestThreatFox(unittest.TestCase):
+    """Tests for ThreatFox source."""
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_check_without_api_key(self):
+        from url_reputation.sources.threatfox import check
+
+        result = check("https://example.com", "example.com")
+
+        self.assertIn("error", result)
+        self.assertIn("THREATFOX_API_KEY", result["error"])
+
+    @patch.dict("os.environ", {"THREATFOX_API_KEY": "test-key"})
+    @patch("url_reputation.sources.threatfox.urllib.request.urlopen")
+    def test_check_no_result(self, mock_urlopen):
+        import json
+
+        from url_reputation.sources.threatfox import check
+
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"query_status": "no_result"}).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = check("https://example.com", "example.com")
+
+        self.assertEqual(result["listed"], False)
+
+    @patch("url_reputation.sources.threatfox.urllib.request.urlopen")
+    def test_check_hash(self, mock_urlopen):
+        import json
+
+        from url_reputation.sources.threatfox import check_hash
+
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"query_status": "ok", "data": [{"x": 1}]}
+        ).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = check_hash("abcd", timeout=3)
+
+        self.assertTrue(result["found"])
+        self.assertEqual(len(result["data"]), 1)
+
+
+class TestAbuseIPDB(unittest.TestCase):
+    @patch.dict("os.environ", {}, clear=True)
+    def test_check_without_api_key(self):
+        from url_reputation.sources.abuseipdb import check
+
+        result = check("https://example.com", "example.com")
+        self.assertIn("error", result)
+
+    @patch.dict("os.environ", {"ABUSEIPDB_API_KEY": "k"})
+    @patch("url_reputation.sources.abuseipdb.socket.gethostbyname")
+    @patch("url_reputation.sources.abuseipdb.urllib.request.urlopen")
+    def test_check_success(self, mock_urlopen, mock_resolve):
+        import json
+
+        from url_reputation.sources.abuseipdb import check
+
+        mock_resolve.return_value = "1.2.3.4"
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"data": {"abuseConfidenceScore": 42, "totalReports": 5}}
+        ).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = check("https://x", "example.com")
+        self.assertEqual(result["ip"], "1.2.3.4")
+        self.assertEqual(result["abuse_score"], 42)
+
+    @patch.dict("os.environ", {"ABUSEIPDB_API_KEY": "k"})
+    @patch("url_reputation.sources.abuseipdb.socket.gethostbyname")
+    @patch("url_reputation.sources.abuseipdb.urllib.request.urlopen")
+    def test_check_http_401(self, mock_urlopen, mock_resolve):
+        import urllib.error
+
+        from url_reputation.sources.abuseipdb import check
+
+        mock_resolve.return_value = "1.2.3.4"
+        mock_urlopen.side_effect = urllib.error.HTTPError(
+            url="x", code=401, msg="unauthorized", hdrs=None, fp=None
+        )
+
+        result = check("https://x", "example.com")
+        self.assertIn("Invalid API key", result["error"])
+
+
+class TestAlienVaultOTX(unittest.TestCase):
+    @patch("url_reputation.sources.alienvault_otx.urllib.request.urlopen")
+    def test_check_ok(self, mock_urlopen):
+        import json
+
+        from url_reputation.sources.alienvault_otx import check
+
+        payload = {
+            "pulse_info": {"count": 1, "pulses": [{"name": "x", "tags": ["a"]}]},
+            "validation": [{"source": "alexa", "message": "Rank #1,234"}],
+        }
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(payload).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = check("https://x", "example.com")
+        self.assertTrue(result["has_pulses"])
+        self.assertEqual(result["alexa_rank"], 1234)
+
+    @patch("url_reputation.sources.alienvault_otx.urllib.request.urlopen")
+    def test_check_url_indicators_exception(self, mock_urlopen):
+        from url_reputation.sources.alienvault_otx import check_url_indicators
+
+        mock_urlopen.side_effect = RuntimeError("boom")
+        result = check_url_indicators("https://x", "example.com")
+        self.assertEqual(result, {})
+
+
+class TestIPQualityScore(unittest.TestCase):
+    @patch.dict("os.environ", {}, clear=True)
+    def test_check_without_api_key(self):
+        from url_reputation.sources.ipqualityscore import check
+
+        result = check("https://x", "example.com")
+        self.assertIn("error", result)
+
+    @patch.dict("os.environ", {"IPQUALITYSCORE_API_KEY": "k"})
+    @patch("url_reputation.sources.ipqualityscore.urllib.request.urlopen")
+    def test_check_success(self, mock_urlopen):
+        import json
+
+        from url_reputation.sources.ipqualityscore import check
+
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"success": True, "risk_score": 12}).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = check("https://x", "example.com")
+        self.assertEqual(result["risk_score"], 12)
+
+    @patch.dict("os.environ", {"IPQUALITYSCORE_API_KEY": "k"})
+    @patch("url_reputation.sources.ipqualityscore.urllib.request.urlopen")
+    def test_check_api_error_payload(self, mock_urlopen):
+        import json
+
+        from url_reputation.sources.ipqualityscore import check
+
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"success": False, "message": "bad request"}
+        ).encode()
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = check("https://x", "example.com")
+        self.assertIn("bad request", result["error"])
+
 
 class TestSafeBrowsing(unittest.TestCase):
     """Tests for Google Safe Browsing source."""
@@ -261,8 +457,8 @@ class TestSafeBrowsing(unittest.TestCase):
         self.assertEqual(result["threats"][0]["type"], "MALWARE")
 
 
-class TestAbuseIPDB(unittest.TestCase):
-    """Tests for AbuseIPDB source."""
+class TestAbuseIPDBLegacy(unittest.TestCase):
+    """Tests for AbuseIPDB source (legacy/basic cases)."""
 
     @patch.dict("os.environ", {}, clear=True)
     def test_check_without_api_key(self):

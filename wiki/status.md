@@ -659,14 +659,15 @@ Execution mode: continue in blocks, but run multiple blocks per cycle when safe.
   - Keep threshold increases tied to targeted test additions per module cluster
 - **DoD:** Explicit path exists and is actionable without destabilizing CI
 
-### Block J (proposed)
+### Block J (in progress)
 
 #### Q17 — Raise coverage threshold to 70
-- **Status:** TODO
+- **Status:** DONE
 - **Deliverables:**
-  - Add focused tests for low-coverage modules (enrichment registry/service + selected sources)
-  - Increase CI floor to `--cov-fail-under=70`
+  - Added focused tests for output + enrichment registry/service + source modules (ThreatFox, AbuseIPDB, OTX, IPQS, URLhaus/PhishTank feed parsing/cache, URLScan paths)
+  - Increased CI floor to `--cov-fail-under=70`
 - **DoD:** CI green with 70% floor
+- **Validation:** local coverage `TOTAL 70%` with full suite green
 
 #### Q18 — Raise coverage threshold to 80 (post-Q17)
 - **Status:** TODO
@@ -674,3 +675,4 @@ Execution mode: continue in blocks, but run multiple blocks per cycle when safe.
   - Continue targeted tests on remaining low-coverage modules
   - Increase CI floor to `--cov-fail-under=80`
 - **DoD:** CI green with 80% floor
+- **Priority modules:** `cli.py`, `enrichment/asn_geo.py`, `providers/registry.py`, `sources/urlscan.py`, `sources/virustotal.py`
