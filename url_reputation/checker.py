@@ -4,10 +4,13 @@ This module returns results in the **Schema v1** contract.
 See `docs/schema-v1.md`.
 """
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from __future__ import annotations
+
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+import threading
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 # Load .env file if present
@@ -21,8 +24,8 @@ try:
 except ImportError:
     pass  # dotenv not installed, rely on environment variables
 
-from .models import IndicatorV1, RateLimitV1, ResultV1, SourceResultV1
-from .providers import ProviderContext, Registry, builtin_providers
+from .models import IndicatorV1, RateLimitV1, ResultV1, SourceResultV1, Verdict
+from .providers import Provider, ProviderContext, Registry, builtin_providers
 from .retry import RetryPolicy, retry_call
 from .sources import (
     abuseipdb,
@@ -59,6 +62,10 @@ FREE_SOURCES = ['urlhaus', 'phishtank', 'dnsbl', 'alienvault_otx']
 def get_default_registry() -> Registry:
     return Registry(builtin_providers())
 
+# Process-wide concurrency controls (useful in batch mode).
+_GLOBAL_SEM: threading.Semaphore | None = None
+_PROVIDER_SEMS: dict[str, threading.Semaphore] = {}
+
 THREAT_WEIGHTS = {
     'malware': 40,
     'phishing': 35,
@@ -93,7 +100,7 @@ def extract_domain(url: str) -> str:
     return parsed.netloc or parsed.path.split('/')[0]
 
 
-def calculate_risk_score(results: dict) -> tuple[int, str]:
+def calculate_risk_score(results: dict[str, dict[str, Any]]) -> tuple[int, Verdict]:
     """Calculate aggregated risk score from all source results."""
     score = 0
     
@@ -149,7 +156,7 @@ def calculate_risk_score(results: dict) -> tuple[int, str]:
     score = min(score, 100)
     
     if score <= 20:
-        verdict = 'CLEAN'
+        verdict: Verdict = 'CLEAN'
     elif score <= 50:
         verdict = 'LOW_RISK'
     elif score <= 75:
@@ -167,7 +174,7 @@ def check_url_reputation(
     *,
     cache_path: str | None = None,
     cache_ttl_seconds: int | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Check reputation across multiple sources.
 
     Returns a dict conforming to **Schema v1**.
@@ -185,7 +192,7 @@ def check_url_reputation(
 
     # Cache lookup (opt-in)
     cache = None
-    cache_key = None
+    cache_key: str | None = None
     ttl = cache_ttl_seconds
     if cache_path and (ttl is not None):
         from .cache import Cache, make_cache_key
@@ -200,18 +207,15 @@ def check_url_reputation(
         if cached:
             return cached
 
-    results_map: dict[str, dict] = {}
-
-    # Concurrency controls (process-wide), useful in batch mode.
-    import threading
+    results_map: dict[str, dict[str, Any]] = {}
 
     global_limit = int(__import__("os").getenv("URL_REPUTATION_MAX_CONCURRENCY", "20"))
-    if not hasattr(check_url_reputation, "_global_sem"):
-        check_url_reputation._global_sem = threading.Semaphore(global_limit)  # type: ignore[attr-defined]
-        check_url_reputation._provider_sems = {}  # type: ignore[attr-defined]
-
-    global_sem = check_url_reputation._global_sem  # type: ignore[attr-defined]
-    provider_sems: dict[str, threading.Semaphore] = check_url_reputation._provider_sems  # type: ignore[attr-defined]
+    global _GLOBAL_SEM
+    if _GLOBAL_SEM is None:
+        _GLOBAL_SEM = threading.Semaphore(global_limit)
+    global_sem = _GLOBAL_SEM
+    assert global_sem is not None
+    provider_sems = _PROVIDER_SEMS
 
     def _get_provider_sem(pname: str, limit: int) -> threading.Semaphore:
         if pname not in provider_sems:
@@ -222,15 +226,15 @@ def check_url_reputation(
         msg = str(e).lower()
         return any(s in msg for s in ["429", "rate limit", "timeout", "timed out", "temporarily"])
 
-    def _run_provider(p):
-        sem = _get_provider_sem(p.name, getattr(p, "max_concurrency", 5))
+    def _run_provider(p: Provider) -> dict[str, Any]:
+        sem = _get_provider_sem(p.name, p.max_concurrency)
 
-        def _call():
+        def _call() -> dict[str, Any]:
             with global_sem:
                 with sem:
                     return p.check(indicator.canonical, domain, ctx)
 
-        policy = RetryPolicy(retries=getattr(p, "retry_retries", 2))
+        policy = RetryPolicy(retries=p.retry_retries)
         return retry_call(_call, policy=policy, should_retry=_should_retry_exc)
 
     if providers:
@@ -249,7 +253,7 @@ def check_url_reputation(
     sources_list: list[SourceResultV1] = []
     for p in providers:
         name = p.name
-        payload = results_map.get(name, {})
+        payload = results_map.get(name) or {}
 
         rate_limit_info = None
         rate_limit = None
@@ -330,7 +334,7 @@ def check_urls_batch(
     sources: Optional[list[str]] = None,
     timeout: int = 30,
     max_workers: int = 5
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
     Check multiple URLs in parallel.
     
@@ -346,10 +350,10 @@ def check_urls_batch(
     if not urls:
         return []
     
-    results = []
+    results: list[dict[str, Any]] = []
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_url = {
+        future_to_url: dict[Future[dict[str, Any]], str] = {
             executor.submit(check_url_reputation, url, sources, timeout): url
             for url in urls
         }

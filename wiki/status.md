@@ -120,7 +120,7 @@ Goal: external providers can be added without editing core.
   - Added Ruff (lint rules) + mypy (type checking) configuration in `pyproject.toml` and docs in `docs/static-analysis.md`.
   - Applied Ruff safe auto-fixes.
   - Ruff status: `ruff check .` passes (we exclude legacy `scripts/**` and ignore E501/E722/B904 initially; tighten later).
-  - mypy status: `mypy url_reputation` passes in informational mode (`ignore_errors=true` for initial adoption; tighten later).
+  - mypy status: `mypy url_reputation` baseline is enforced (no global `ignore_errors=true`; tighten options gradually).
 
 #### C0 — Stop tracking build artifacts (dist/)
 - Status: DONE
@@ -308,10 +308,14 @@ Goal: external providers can be added without editing core.
 ### Maintenance / tightening
 
 #### T18 — Tighten mypy (progressively)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - Move from informational to enforceable mypy (reduce `ignore_errors=true`)
   - Fix highest-value type issues first (core library surface)
+- Notes:
+  - Removed global `ignore_errors=true` and tightened types in core surfaces (checker/CLI/providers).
+  - Eliminated legacy `type: ignore[...]` markers by fixing underlying typing.
+  - Commit: `ea420cb` (chore: tighten mypy baseline (T18))
 
 #### T19 — Unified aggregated scoring rules (explainable)
 - Status: TODO
