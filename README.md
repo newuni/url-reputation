@@ -262,6 +262,13 @@ url-reputation --file urls.txt --json
 
 # Control parallelism
 url-reputation --file urls.txt --workers 10
+
+# Limit batch work in CI
+url-reputation --file urls.txt --format ndjson --max-requests 100
+url-reputation --file urls.txt --format ndjson --budget-seconds 60
+
+# Preserve input order (buffered) for streaming outputs
+url-reputation --file urls.txt --format ndjson --preserve-order
 ```
 
 ### Check specific sources only
