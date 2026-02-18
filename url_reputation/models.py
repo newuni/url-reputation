@@ -59,6 +59,8 @@ class SourceResultV1:
 
     error: Optional[str] = None
     rate_limit: Optional[RateLimitV1] = None
+    # Rich rate-limit metadata (when available). JSON-safe dict derived from RateLimitInfo.
+    rate_limit_info: Optional[dict[str, Any]] = None
 
 
 @dataclass(frozen=True)

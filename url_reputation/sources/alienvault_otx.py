@@ -8,6 +8,8 @@ import json
 import os
 import urllib.request
 
+from .http_meta import error_meta, response_meta
+
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
@@ -29,6 +31,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             req.add_header('X-OTX-API-KEY', api_key)
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         pulse_info = result.get('pulse_info', {})
@@ -66,12 +69,13 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
                 }
                 for p in pulse_info.get('pulses', [])[:3]  # First 3 pulses
             ],
+            '_http': http,
         }
         
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return {'pulse_count': 0, 'has_pulses': False}
-        return {'error': f'HTTP {e.code}'}
+            return {'pulse_count': 0, 'has_pulses': False, '_http': error_meta(e)}
+        return {'error': f'HTTP {e.code}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}
 
@@ -91,12 +95,16 @@ def check_url_indicators(url: str, domain: str, timeout: int = 30) -> dict:
             req.add_header('X-OTX-API-KEY', api_key)
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         return {
             'pulse_count': result.get('pulse_info', {}).get('count', 0),
             'alexa': result.get('alexa'),
+            '_http': http,
         }
         
-    except:
+    except urllib.error.HTTPError as e:
+        return {'_http': error_meta(e)}
+    except Exception:
         return {}

@@ -10,6 +10,8 @@ import os
 import urllib.parse
 import urllib.request
 
+from .http_meta import error_meta, response_meta
+
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
@@ -34,6 +36,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
         req.add_header('Accept', 'application/json')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         data = result.get('data', {})
@@ -53,6 +56,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             'scan_date': attributes.get('last_analysis_date'),
             'reputation': attributes.get('reputation', 0),
             'categories': attributes.get('categories', {}),
+            '_http': http,
         }
         
     except urllib.error.HTTPError as e:
@@ -60,10 +64,10 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             # URL not in database, submit for scanning
             return _submit_url(url, api_key, timeout)
         elif e.code == 401:
-            return {'error': 'Invalid API key'}
+            return {'error': 'Invalid API key', '_http': error_meta(e)}
         elif e.code == 429:
-            return {'error': 'Rate limited - wait before retrying'}
-        return {'error': f'HTTP {e.code}: {e.reason}'}
+            return {'error': 'Rate limited - wait before retrying', '_http': error_meta(e)}
+        return {'error': f'HTTP {e.code}: {e.reason}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}
 
@@ -80,6 +84,7 @@ def _submit_url(url: str, api_key: str, timeout: int = 30) -> dict:
         req.add_header('Content-Type', 'application/x-www-form-urlencoded')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         return {
@@ -88,6 +93,7 @@ def _submit_url(url: str, api_key: str, timeout: int = 30) -> dict:
             'submitted': True,
             'analysis_id': result.get('data', {}).get('id'),
             'note': 'URL submitted for scanning - check back in a few minutes',
+            '_http': http,
         }
         
     except Exception as e:

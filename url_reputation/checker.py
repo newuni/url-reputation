@@ -250,6 +250,22 @@ def check_url_reputation(
     for p in providers:
         name = p.name
         payload = results_map.get(name, {})
+
+        rate_limit_info = None
+        rate_limit = None
+        try:
+            rl = p.parse_rate_limit(payload)
+            if isinstance(rl, dict):
+                rate_limit_info = rl
+                rate_limit = RateLimitV1(
+                    limit=rl.get("limit"),
+                    remaining=rl.get("remaining"),
+                    reset_at=rl.get("reset_at"),
+                )
+        except Exception:
+            rate_limit_info = None
+            rate_limit = None
+
         if payload.get('error'):
             sources_list.append(
                 SourceResultV1(
@@ -257,6 +273,8 @@ def check_url_reputation(
                     status="error",
                     raw={k: v for k, v in payload.items() if k != 'error'},
                     error=str(payload.get('error')),
+                    rate_limit=rate_limit,
+                    rate_limit_info=rate_limit_info,
                 )
             )
             continue
@@ -273,18 +291,6 @@ def check_url_reputation(
         elif isinstance(payload.get('abuse_score'), (int, float)):
             score = float(payload['abuse_score'])
 
-        rate_limit = None
-        try:
-            rl = p.parse_rate_limit(payload)
-            if isinstance(rl, dict):
-                rate_limit = RateLimitV1(
-                    limit=rl.get("limit"),
-                    remaining=rl.get("remaining"),
-                    reset_at=rl.get("reset_at"),
-                )
-        except Exception:
-            rate_limit = None
-
         sources_list.append(
             SourceResultV1(
                 name=name,
@@ -293,6 +299,7 @@ def check_url_reputation(
                 score=score,
                 raw=payload,
                 rate_limit=rate_limit,
+                rate_limit_info=rate_limit_info,
             )
         )
 

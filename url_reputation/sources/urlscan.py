@@ -8,6 +8,8 @@ import json
 import os
 import urllib.request
 
+from .http_meta import error_meta, response_meta
+
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
@@ -44,6 +46,7 @@ def _search_url(url: str, api_key: str, timeout: int = 30) -> dict:
         req.add_header('API-Key', api_key)
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         results = result.get('results', [])
@@ -69,10 +72,13 @@ def _search_url(url: str, api_key: str, timeout: int = 30) -> dict:
                 'ip': page.get('ip'),
                 'country': page.get('country'),
                 'server': page.get('server'),
+                '_http': http,
             }
         
-        return {'found': False}
+        return {'found': False, '_http': http}
         
+    except urllib.error.HTTPError as e:
+        return {'error': f'HTTP {e.code}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}
 
@@ -92,6 +98,7 @@ def _submit_scan(url: str, api_key: str, timeout: int = 30) -> dict:
         req.add_header('Content-Type', 'application/json')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         return {
@@ -100,11 +107,12 @@ def _submit_scan(url: str, api_key: str, timeout: int = 30) -> dict:
             'scan_uuid': result.get('uuid'),
             'result_url': result.get('result'),
             'note': 'URL submitted for scanning - results available in ~30 seconds',
+            '_http': http,
         }
         
     except urllib.error.HTTPError as e:
         if e.code == 429:
-            return {'error': 'Rate limited'}
-        return {'error': f'HTTP {e.code}'}
+            return {'error': 'Rate limited', '_http': error_meta(e)}
+        return {'error': f'HTTP {e.code}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}

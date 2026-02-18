@@ -24,7 +24,8 @@ All JSON outputs **must** include `schema_version: "1"`.
       "score": null,
       "raw": {"listed": false},
       "error": null,
-      "rate_limit": null
+      "rate_limit": null,
+      "rate_limit_info": null
     }
   ],
   "enrichment": {
@@ -45,6 +46,8 @@ All JSON outputs **must** include `schema_version: "1"`.
 
 - `indicator.canonical` is a normalized value used for caching and stable keys.
 - `sources[].raw` contains the provider payload as returned by the provider implementation.
+- `sources[].rate_limit` is a small backwards-compatible subset (limit/remaining/reset_at).
+- `sources[].rate_limit_info` is richer metadata when available (retry-after, reset window, raw headers).
 - If a provider fails, it should yield a `SourceResultV1` with:
   - `status="error"`
   - `error` filled

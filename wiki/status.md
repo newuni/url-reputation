@@ -257,10 +257,14 @@ Goal: external providers can be added without editing core.
   - Added tests and made DNS enrichment tests deterministic when dnspython is installed.
 
 #### T13 — Provider-specific rate limit parsing (real)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - For each built-in provider, parse rate-limit headers/fields into `SourceResultV1.rate_limit`
   - Retry policy respects `Retry-After` and reset windows when available
+ - Notes:
+   - Added normalized `RateLimitInfo` parsing from provider response headers (GitHub-style `X-RateLimit-*`, generic `Retry-After`).
+   - Built-in HTTP sources now attach response metadata under `_http` so providers can parse headers without network in tests.
+   - Output now includes `sources[].rate_limit_info` (rich, JSON-safe), while keeping `sources[].rate_limit` for backwards compatibility.
 
 ### Phase 3 — CLI ergonomics + CI integration (improvements)
 
@@ -310,4 +314,4 @@ Goal: external providers can be added without editing core.
 
 ## Next task to execute
 
-Now executing **T12 — Redirect-chain enricher**.
+Next up: **T14 — Report outputs (markdown + summary)**.

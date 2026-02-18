@@ -8,6 +8,8 @@ import json
 import os
 import urllib.request
 
+from .http_meta import error_meta, response_meta
+
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
@@ -51,6 +53,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
         req.add_header('Content-Type', 'application/json')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         matches = result.get('matches', [])
@@ -67,13 +70,14 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             return {
                 'threats': threats,
                 'threat_types': list(set(m['type'] for m in threats)),
+                '_http': http,
             }
         
-        return {'threats': []}
+        return {'threats': [], '_http': http}
         
     except urllib.error.HTTPError as e:
         if e.code == 400:
-            return {'error': 'Bad request - check API key'}
-        return {'error': f'HTTP {e.code}: {e.reason}'}
+            return {'error': 'Bad request - check API key', '_http': error_meta(e)}
+        return {'error': f'HTTP {e.code}: {e.reason}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}

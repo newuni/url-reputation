@@ -10,6 +10,8 @@ import socket
 import urllib.parse
 import urllib.request
 
+from .http_meta import error_meta, response_meta
+
 
 def check(url: str, domain: str, timeout: int = 30) -> dict:
     """
@@ -47,6 +49,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
         req.add_header('Accept', 'application/json')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         data = result.get('data', {})
@@ -62,14 +65,15 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             'is_tor': data.get('isTor', False),
             'is_whitelisted': data.get('isWhitelisted', False),
             'last_reported': data.get('lastReportedAt'),
+            '_http': http,
         }
         
     except urllib.error.HTTPError as e:
         if e.code == 401:
-            return {'error': 'Invalid API key'}
+            return {'error': 'Invalid API key', '_http': error_meta(e)}
         elif e.code == 429:
-            return {'error': 'Rate limited - daily limit exceeded'}
-        return {'error': f'HTTP {e.code}: {e.reason}'}
+            return {'error': 'Rate limited - daily limit exceeded', '_http': error_meta(e)}
+        return {'error': f'HTTP {e.code}: {e.reason}', '_http': error_meta(e)}
     except Exception as e:
         return {'error': str(e)}
 
@@ -106,11 +110,13 @@ def report_ip(ip: str, categories: list[int], comment: str, api_key: str = None,
         req.add_header('Accept', 'application/json')
         
         with urllib.request.urlopen(req, timeout=timeout) as response:
+            http = response_meta(response)
             result = json.loads(response.read().decode('utf-8'))
         
         return {
             'reported': True,
             'abuse_score': result.get('data', {}).get('abuseConfidenceScore'),
+            '_http': http,
         }
         
     except Exception as e:
