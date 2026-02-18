@@ -312,10 +312,11 @@ Goal: external providers can be added without editing core.
   - Fix highest-value type issues first (core library surface)
 
 #### T19 — Unified aggregated scoring rules (explainable)
-- Status: TODO
+- Status: DONE
 - Deliverables:
   - `risk_score` explanation (`score_breakdown` / `reasons[]`)
   - Configurable weights per provider and a small set of rules (redirects + domain age, etc.)
+- Commit: `4545fc8` (feat: explainable aggregated scoring (T19))
 
 ---
 
