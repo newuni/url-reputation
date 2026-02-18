@@ -136,14 +136,7 @@ def to_markdown_batch(results: list[dict[str, Any]]) -> str:
         risk = f"{risk_score}/100" if risk_score != "-" else "-"
         err = r.get("error")
         out.append(
-            "| {indicator} | {typ} | {verdict} | {risk} | {domain} | {err} |".format(
-                indicator=_md_code(_cell(input_)),
-                typ=_md_code(_cell(typ)),
-                verdict=_md_code(_cell(verdict)),
-                risk=_md_code(_cell(risk)),
-                domain=_md_code(_cell(domain)),
-                err=_cell(err),
-            )
+            f"| {_md_code(_cell(input_))} | {_md_code(_cell(typ))} | {_md_code(_cell(verdict))} | {_md_code(_cell(risk))} | {_md_code(_cell(domain))} | {_cell(err)} |"
         )
 
     # Summary (must be at end for batch runs).

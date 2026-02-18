@@ -5,7 +5,8 @@ Supports both domain- and URL-based enrichers.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from .base import EnrichmentContext, IndicatorType
 from .builtins import builtin_enrichers
