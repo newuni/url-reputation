@@ -583,3 +583,14 @@ Future hardening (optional):
 - Tighten deferred `UP/SIM` codes gradually (`UP045`, `SIM105`, `SIM108`, `SIM113`, `SIM117`)
 - Add Ruff families `RET`, `C4`
 - Enforce coverage floor in CI (`--cov-fail-under` progressive)
+
+### Deferred-by-design (explicitly parked)
+
+The following rules were intentionally deferred to avoid high-noise diffs while keeping CI green:
+- `UP045` (`Optional[T]` → `T | None` mass migration)
+- `SIM105` (replace `try/except/pass` with `contextlib.suppress`)
+- `SIM108` (ternary preference)
+- `SIM113` (prefer `enumerate`)
+- `SIM117` (merge nested `with` contexts)
+
+Decision: resolve these incrementally in dedicated small blocks, updating this status doc after each block.
