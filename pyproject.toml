@@ -58,7 +58,6 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = [
   "E501",   # line length
   "UP045",  # Optional[X] -> X|None migration (high-noise, do gradually)
-  "SIM105", # try/except/pass simplification (defer while preserving explicit intent)
 ]
 
 [tool.ruff.lint.per-file-ignores]

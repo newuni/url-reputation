@@ -4,6 +4,7 @@ No API key required for basic lookups (key gives higher rate limits)
 https://otx.alienvault.com/
 """
 
+import contextlib
 import json
 import os
 import urllib.request
@@ -49,10 +50,8 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
             if v.get("source") == "alexa":
                 msg = v.get("message", "")
                 if "#" in msg:
-                    try:
+                    with contextlib.suppress(Exception):
                         alexa_rank = int(msg.split("#")[1].split()[0].replace(",", ""))
-                    except Exception:
-                        pass
 
         return {
             "pulse_count": pulse_count,

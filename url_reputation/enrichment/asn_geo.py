@@ -13,6 +13,7 @@ This module intentionally avoids new hard dependencies.
 
 from __future__ import annotations
 
+import contextlib
 import ipaddress
 import json
 import os
@@ -252,10 +253,8 @@ def _cymru_lookup(ip: str, *, timeout: int) -> tuple[Optional[dict[str, Any]], O
             f.write(b"begin\nverbose\n")
             f.write(ip.encode("utf-8", errors="strict") + b"\n")
             f.write(b"end\n")
-            try:
+            with contextlib.suppress(Exception):
                 f.flush()
-            except Exception:
-                pass
 
             text = b""
             while True:

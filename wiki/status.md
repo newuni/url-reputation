@@ -601,8 +601,15 @@ Future hardening (optional):
 
 ### Deferred-by-design (explicitly parked)
 
-The following rules remain intentionally deferred to avoid high-noise diffs:
-- `UP045` (`Optional[T]` → `T | None` mass migration)
-- `SIM105` (replace `try/except/pass` with `contextlib.suppress`)
+### Block F (done)
 
-Decision: resolve these incrementally in dedicated small blocks, updating this status doc after each block.
+#### Q11 — Resolve deferred `SIM105` (`contextlib.suppress`)
+- **Status:** DONE
+- **Deliverables:**
+  - Replaced remaining `try/except/pass` simplification cases via safe Ruff fixes
+- **DoD:** `ruff check .` green without ignoring `SIM105`
+
+The following rule remains intentionally deferred to avoid high-noise diffs:
+- `UP045` (`Optional[T]` → `T | None` mass migration)
+
+Decision: resolve incrementally in a dedicated cleanup block, updating this status doc after completion.

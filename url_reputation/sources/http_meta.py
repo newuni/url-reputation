@@ -7,6 +7,7 @@ rate-limit headers without needing network access in tests.
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 
@@ -39,10 +40,8 @@ def response_meta(response: Any) -> dict[str, Any]:
 
     meta: dict[str, Any] = {}
     if status is not None:
-        try:
+        with contextlib.suppress(Exception):
             meta["status"] = int(status)
-        except Exception:
-            pass
 
     h = headers_to_dict(headers)
     if h:
@@ -56,10 +55,8 @@ def error_meta(err: Any) -> dict[str, Any]:
 
     meta: dict[str, Any] = {}
     if status is not None:
-        try:
+        with contextlib.suppress(Exception):
             meta["status"] = int(status)
-        except Exception:
-            pass
 
     h = headers_to_dict(headers)
     if h:

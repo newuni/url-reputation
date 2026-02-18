@@ -2,6 +2,7 @@
 Enrichment modules for DNS and Whois data.
 """
 
+import contextlib
 import re
 import socket
 import subprocess
@@ -92,12 +93,10 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
         except Exception:
             pass
 
-        try:
+        with contextlib.suppress(Exception):
             result["aaaa_records"] = list(
                 set(info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET6))
             )
-        except Exception:
-            pass
 
     # Add IP geolocation for first A record
     if result["a_records"]:
