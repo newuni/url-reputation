@@ -30,6 +30,18 @@ All JSON outputs **must** include `schema_version: "1"`.
   ],
   "enrichment": {
     "dns": {"a_records": ["93.184.216.34"]},
+    "asn_geo": {
+      "ips": ["93.184.216.34"],
+      "asn": {"number": 15169, "name": null, "org": "Google LLC", "prefix": "93.184.216.0/24"},
+      "geo": {"country": "United States", "region": "California", "city": "Los Angeles", "lat": 34.05, "lon": -118.24, "isp": "Example ISP"},
+      "quality": {
+        "source": "online",
+        "confidence": "high",
+        "coverage": ["ips", "asn", "org", "prefix", "country", "region", "city", "latlon", "isp"],
+        "notes": [],
+        "sources": ["ip-api", "ripe"]
+      }
+    },
     "redirects": {
       "final_url": "https://www.example.com/",
       "hops": 1,

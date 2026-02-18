@@ -283,10 +283,17 @@ Goal: external providers can be added without editing core.
 ### Phase 4 — Enrichment & normalization (more)
 
 #### T16 — ASN/Geo enricher (domain/ip)
-- Status: TODO
+- Status: DONE
 - Deliverables:
-  - `--enrich asn` (and optionally `geo`) mapping domain→IP→ASN/org/country
-  - Configurable sources (free-first); keep deps optional
+  - `--enrich asn_geo` (alias: `asn`) mapping domain/IP→ASN/org/prefix + basic geo
+  - Online-first, no API keys; local/offline fallback with quality reporting
+  - Deterministic offline tests (no external network)
+- Notes:
+  - Added `url_reputation/enrichment/asn_geo.py` (RIPEstat + Team Cymru + ip-api, with TTL caching and graceful fallback).
+  - Output includes a `quality` object: source/confidence/coverage/notes/sources.
+  - Registered enricher in `url_reputation/enrichment/builtins.py` as `asn_geo` and alias `asn`.
+  - Docs updated: `docs/schema-v1.md`.
+  - Commit: (see git history)  # populated by T16 implementation
 
 ### Phase 5 — Plugins + ecosystem (improvements)
 

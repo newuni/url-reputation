@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..enrich import enrich_dns, enrich_whois
+from .asn_geo import AsnGeoEnricher
 from .base import Enricher, EnrichmentContext
 from .redirects import RedirectsEnricher
 
@@ -27,8 +28,12 @@ class _FnEnricher(Enricher):
 
 
 def builtin_enrichers() -> dict[str, Enricher]:
+    asn_geo = AsnGeoEnricher()
     return {
         "dns": _FnEnricher("dns", enrich_dns),
         "whois": _FnEnricher("whois", enrich_whois),
         "redirects": RedirectsEnricher(max_hops=10),
+        # T16 canonical name (and a short alias to match the roadmap wording).
+        "asn_geo": asn_geo,
+        "asn": asn_geo,
     }
