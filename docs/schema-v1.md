@@ -17,6 +17,8 @@ Note: the CLI also supports presentation formats (`--format pretty|markdown`) wh
   },
   "verdict": "CLEAN",
   "risk_score": 0,
+  "score_breakdown": [],
+  "reasons": [],
   "checked_at": "2026-02-17T13:00:00.000000+00:00",
   "sources": [
     {
@@ -62,6 +64,16 @@ Note: the CLI also supports presentation formats (`--format pretty|markdown`) wh
 - `sources[].raw` contains the provider payload as returned by the provider implementation.
 - `sources[].rate_limit` is a small backwards-compatible subset (limit/remaining/reset_at).
 - `sources[].rate_limit_info` is richer metadata when available (retry-after, reset window, raw headers).
+- `score_breakdown` is a list of explainable scoring contributions. Each entry has:
+  - `rule_id`: stable rule identifier
+  - `provider`: provider/enrichment name (e.g., `phishtank`, `redirects`, `whois`)
+  - `points`: base points for the rule
+  - `weight`: configured weight for that provider
+  - `weighted_points`: points after weights (rounded half-up)
+  - `reason`: short description
+  - `evidence`: small JSON-safe dict to support the reason
+- `reasons` is a human-readable list derived from `score_breakdown`.
+- Provider/enrichment weights are configurable via `URL_REPUTATION_PROVIDER_WEIGHTS` (JSON map of name→float).
 - If a provider fails, it should yield a `SourceResultV1` with:
   - `status="error"`
   - `error` filled

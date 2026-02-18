@@ -14,7 +14,7 @@ from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from typing import Any
 
 from .checker import check_url_reputation
-from .enrichment.service import enrich_indicator
+from .enrichment.service import enrich_indicator  # kept for test/backwards-compat patching
 from .output import (
     exit_code_from_results,
     exit_code_from_verdict,
@@ -22,6 +22,7 @@ from .output import (
     worst_verdict,
 )
 from .markdown import to_markdown_batch, to_markdown_single
+from .scoring import aggregate_risk_score
 from .webhook import notify_on_risk
 
 
@@ -217,7 +218,7 @@ def main():
             cache_ttl_seconds=cache_ttl_seconds,
         )
 
-        # Add enrichment if requested
+        # Add enrichment if requested (kept for backwards-compat and CLI tests).
         if args.enrich:
             enrich_types = [t.strip() for t in args.enrich.split(',')]
             ind = result.get('indicator') or {}
@@ -231,6 +232,14 @@ def main():
                 types=enrich_types,
                 timeout=args.timeout,
             )
+
+            # Recompute aggregated score so enrichment-based rules can contribute (T19).
+            sources_map = {s.get('name'): (s.get('raw') or {}) for s in result.get('sources', []) if isinstance(s, dict)}
+            agg = aggregate_risk_score(sources_map, enrichment=result.get('enrichment'))
+            result['risk_score'] = agg.risk_score
+            result['verdict'] = agg.verdict
+            result['score_breakdown'] = agg.score_breakdown
+            result['reasons'] = agg.reasons
 
         if out_format == 'json':
             if args.legacy_json:
