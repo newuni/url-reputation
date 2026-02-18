@@ -12,7 +12,8 @@
 
 - Repo: https://github.com/newuni/url-reputation
 - Local path on this host: `/root/clawd/skills/url-reputation`
-- Latest release: **v1.4.1** (Docker healthcheck + dev workflow)
+- Latest release: **v1.6.0** (Polish phase: tests, docs, performance, CI/CD)
+- Previous release: v1.5.0 (T13-T19 improvements)
 - Primary focus: **Developer-first unified URL/domain/IP reputation library** (multi-provider “front door”).
 
 ## Vision
@@ -469,6 +470,38 @@ Goal: external providers can be added without editing core.
 
 ---
 
+## Release v1.6.0 Summary
+
+**Phase 6-9 (Polish) COMPLETED**
+
+All P1-P10 tasks implemented by swarm of 3 agents:
+
+| Agent | Tasks | Status |
+|-------|-------|--------|
+| Testing Agent | P1, P2, P3 | ✅ Committed (coverage, property tests, integration) |
+| Documentation Agent | P4, P5, P6 | ✅ Committed (ADRs, CONTRIBUTING.md, issue templates) |
+| Performance Agent | P7, P8, P9, P10 | ✅ Committed (benchmarks, profiling, CI workflows) |
+
+**Key changes in v1.6.0:**
+- 146 total tests (133 core + 13 benchmarks)
+- Property-based tests with `hypothesis`
+- 3 ADRs documenting architecture decisions
+- Complete CI/CD via GitHub Actions
+- Performance benchmarking suite
+
+**Commits:**
+- `c75f502` — feat(docs,tests): complete P1-P6 polish phase
+- `2462a2b` — perf(P7): add benchmark suite with pytest-benchmark
+- `dcc3fcf` — chore(release): bump version to 1.6.0
+
+---
+
 ## Next task to execute
 
-Swarm execution in progress. See Phase 6-9 tasks above.
+**COMPLETED** — See Phase 6-9 tasks above (all DONE).
+
+Future work (optional):
+- Expand benchmark suite with real provider measurements
+- Add more enrichment sources (TLS cert analysis, screenshot analysis)
+- Plugin marketplace/registry
+- Distributed caching (Redis) for multi-node deployments
