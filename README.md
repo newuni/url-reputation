@@ -172,6 +172,16 @@ Domain: google.com
 $ url-reputation "https://google.com" --json
 ```
 
+### Markdown report output
+
+```bash
+# Single
+url-reputation "https://google.com" --format markdown
+
+# Batch (includes a summary at the end)
+url-reputation --file urls.txt --format markdown
+```
+
 ### Profiles (developer-friendly presets)
 
 ```bash
