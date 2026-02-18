@@ -91,7 +91,10 @@ def _http_get_json(url: str, *, timeout: int, user_agent: str) -> dict[str, Any]
     with urlopen(req, timeout=timeout) as resp:
         raw = resp.read()
     try:
-        return json.loads(raw.decode("utf-8"))
+        payload = json.loads(raw.decode("utf-8"))
+        if isinstance(payload, dict):
+            return cast(dict[str, Any], payload)
+        return {"_error": "invalid_json_type", "_raw": payload}
     except Exception:
         # Ensure JSON-safe return even for unexpected upstream output.
         return {"_error": "invalid_json", "_raw": raw[:200].decode("utf-8", errors="replace")}

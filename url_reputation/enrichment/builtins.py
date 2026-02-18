@@ -8,6 +8,7 @@ Enrichers are intentionally lightweight wrappers to keep core deps minimal.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from ..enrich import enrich_dns, enrich_whois
@@ -17,14 +18,17 @@ from .redirects import RedirectsEnricher
 
 
 class _FnEnricher(Enricher):
-    def __init__(self, name: str, fn):
+    def __init__(self, name: str, fn: Callable[..., Any]):
         self.name = name
         self._fn = fn
 
     def enrich(self, indicator: str, ctx: EnrichmentContext) -> dict[str, Any]:
         # These legacy enrichers expect a domain string.
         # Callers should pass a domain indicator when indicator_type=domain/url.
-        return self._fn(indicator, timeout=ctx.timeout)
+        out = self._fn(indicator, timeout=ctx.timeout)
+        if isinstance(out, dict):
+            return out
+        return {"error": "enricher returned non-dict result"}
 
 
 def builtin_enrichers() -> dict[str, Enricher]:

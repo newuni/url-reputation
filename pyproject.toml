@@ -57,8 +57,6 @@ select = ["E", "F", "I", "B"]
 # Initial adoption: ignore a few noisy / legacy patterns; we will tighten later.
 ignore = [
   "E501",  # line length
-  "E722",  # bare except (legacy code; fix gradually)
-  "B904",  # raise ... from err (fix gradually)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -67,11 +65,11 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.9"
-warn_return_any = false
+warn_return_any = true
 warn_unused_ignores = true
 # Tightened level: require explicit Optional[...] for None defaults.
 no_implicit_optional = true
-check_untyped_defs = false
+check_untyped_defs = true
 ignore_missing_imports = true
 # Enforceable baseline: avoid global error suppression; tighten options over time.
 

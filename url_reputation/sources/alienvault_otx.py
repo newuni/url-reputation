@@ -51,7 +51,7 @@ def check(url: str, domain: str, timeout: int = 30) -> dict:
                 if "#" in msg:
                     try:
                         alexa_rank = int(msg.split("#")[1].split()[0].replace(",", ""))
-                    except:
+                    except Exception:
                         pass
 
         return {

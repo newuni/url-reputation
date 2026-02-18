@@ -24,7 +24,7 @@ def _sleep_seconds(attempt: int, policy: RetryPolicy) -> float:
     delay = min(delay, policy.max_delay_seconds)
     # jitter in range [1-jitter, 1+jitter]
     factor = 1.0 + random.uniform(-policy.jitter, policy.jitter)
-    return max(0.0, delay * factor)
+    return float(max(0.0, delay * factor))
 
 
 def retry_call(

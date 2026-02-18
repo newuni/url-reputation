@@ -38,14 +38,14 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
         try:
             answers = resolver.resolve(domain, "A")
             result["a_records"] = [str(r) for r in answers]
-        except:
+        except Exception:
             pass
 
         # AAAA records
         try:
             answers = resolver.resolve(domain, "AAAA")
             result["aaaa_records"] = [str(r) for r in answers]
-        except:
+        except Exception:
             pass
 
         # MX records
@@ -54,21 +54,21 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
             result["mx_records"] = [
                 {"priority": r.preference, "host": str(r.exchange).rstrip(".")} for r in answers
             ]
-        except:
+        except Exception:
             pass
 
         # NS records
         try:
             answers = resolver.resolve(domain, "NS")
             result["ns_records"] = [str(r).rstrip(".") for r in answers]
-        except:
+        except Exception:
             pass
 
         # TXT records
         try:
             answers = resolver.resolve(domain, "TXT")
             result["txt_records"] = [str(r).strip('"') for r in answers]
-        except:
+        except Exception:
             pass
 
         # Extract security indicators from TXT
@@ -79,7 +79,7 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
         try:
             dmarc = resolver.resolve(f"_dmarc.{domain}", "TXT")
             result["has_dmarc"] = any("v=DMARC1" in str(r) for r in dmarc)
-        except:
+        except Exception:
             pass
 
     except ImportError:
@@ -89,14 +89,14 @@ def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
             result["a_records"] = list(
                 set(info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET))
             )
-        except:
+        except Exception:
             pass
 
         try:
             result["aaaa_records"] = list(
                 set(info[4][0] for info in socket.getaddrinfo(domain, None, socket.AF_INET6))
             )
-        except:
+        except Exception:
             pass
 
     # Add IP geolocation for first A record
@@ -188,9 +188,9 @@ def enrich_whois(domain: str, timeout: int = 10) -> dict:
                                 result["domain_age_days"] = (datetime.now() - dt).days
                                 result["is_new_domain"] = result["domain_age_days"] < 30
                                 break
-                            except:
+                            except Exception:
                                 continue
-                    except:
+                    except Exception:
                         pass
                     break
 

@@ -64,7 +64,7 @@ async def check_url(request: CheckRequest):
 
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/api/batch")
@@ -92,7 +92,7 @@ async def check_batch(request: BatchRequest):
 
         return {"summary": summary, "results": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/api/sources")

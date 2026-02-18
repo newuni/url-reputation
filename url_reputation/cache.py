@@ -18,7 +18,7 @@ import sqlite3
 import time
 from contextlib import closing
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 
 def default_cache_path() -> str:
@@ -92,7 +92,10 @@ class Cache:
         if ttl_seconds >= 0 and (now - float(updated_at)) > ttl_seconds:
             return None
         try:
-            return json.loads(value_json)
+            payload = json.loads(value_json)
+            if isinstance(payload, dict):
+                return cast(dict[str, Any], payload)
+            return None
         except Exception:
             return None
 

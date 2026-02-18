@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from collections.abc import Callable
+from typing import Any, Optional
 
 from ..sources import (
     abuseipdb,
@@ -22,7 +23,13 @@ from .base import Provider, ProviderContext
 
 class _FnProvider(Provider):
     def __init__(
-        self, name: str, fn, available_fn=None, *, max_concurrency: int = 5, retry_retries: int = 2
+        self,
+        name: str,
+        fn: Callable[[str, str, int], Any],
+        available_fn: Optional[Callable[[], object]] = None,
+        *,
+        max_concurrency: int = 5,
+        retry_retries: int = 2,
     ):
         self.name = name
         self._fn = fn
@@ -36,7 +43,10 @@ class _FnProvider(Provider):
         return True
 
     def check(self, indicator: str, domain: str, ctx: ProviderContext) -> dict[str, Any]:
-        return self._fn(indicator, domain, ctx.timeout)
+        out = self._fn(indicator, domain, ctx.timeout)
+        if isinstance(out, dict):
+            return out
+        return {"error": "provider returned non-dict result"}
 
 
 def builtin_providers() -> dict[str, Provider]:

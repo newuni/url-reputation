@@ -22,7 +22,7 @@ def _get_domain(url: str) -> str:
     try:
         parsed = urlparse(url)
         return parsed.netloc or parsed.path.split("/")[0]
-    except:
+    except Exception:
         return url
 
 
@@ -34,7 +34,7 @@ def _load_cache() -> tuple[Optional[dict[str, Any]], float]:
             if time.time() - mtime < CACHE_TTL:
                 with open(CACHE_FILE) as f:
                     return json.load(f), mtime
-    except:
+    except Exception:
         pass
     return None, 0.0
 
@@ -44,7 +44,7 @@ def _save_cache(data: dict[str, Any]) -> None:
     try:
         with open(CACHE_FILE, "w") as f:
             json.dump(data, f)
-    except:
+    except Exception:
         pass
 
 

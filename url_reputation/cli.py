@@ -11,11 +11,12 @@ import os
 import time
 from collections.abc import Iterable, Iterator
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from typing import Any
+from typing import Any, cast
 
 from .checker import check_url_reputation
 from .enrichment.service import enrich_indicator  # kept for test/backwards-compat patching
 from .markdown import to_markdown_batch, to_markdown_single
+from .models import IndicatorType
 from .output import (
     exit_code_from_results,
     exit_code_from_verdict,
@@ -201,7 +202,8 @@ def main():
         if args.enrich:
             enrich_types = [t.strip() for t in args.enrich.split(",")]
             ind = result.get("indicator") or {}
-            indicator_type = ind.get("type") or "domain"
+            indicator_type_raw = ind.get("type") or "domain"
+            indicator_type = cast(IndicatorType, str(indicator_type_raw))
             indicator_canonical = ind.get("canonical") or result.get("domain")
 
             # Use canonical indicator so enrichers see normalized input.
@@ -213,10 +215,10 @@ def main():
             )
 
             # Recompute aggregated score so enrichment-based rules can contribute (T19).
-            sources_map = {
-                s.get("name"): (s.get("raw") or {})
+            sources_map: dict[str, dict[str, Any]] = {
+                str(s["name"]): cast(dict[str, Any], (s.get("raw") or {}))
                 for s in result.get("sources", [])
-                if isinstance(s, dict)
+                if isinstance(s, dict) and s.get("name")
             }
             agg = aggregate_risk_score(sources_map, enrichment=result.get("enrichment"))
             result["risk_score"] = agg.risk_score
