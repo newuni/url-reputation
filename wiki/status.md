@@ -555,7 +555,7 @@ Execution strategy agreed with owner: **blocks of 2** tasks.
 
 ### Commits
 - `16124a2` — chore(quality): tighten mypy + ruff levels (steps 1-4)
-- `d09970a` — chore(quality): enable mypy disallow_untyped_defs + strict_equality
+- `de8e072` — chore(quality): enable mypy disallow_untyped_defs + strict_equality
 
 ---
 
