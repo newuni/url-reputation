@@ -230,6 +230,7 @@
                                 <span class="text-gray-300 break-all" x-text="value"></span>
                             </div>
                         </template>
+                        <p x-show="!hasWhoisData()" class="text-gray-400">No WHOIS fields returned (often due to registry privacy/redaction).</p>
                     </div>
                 </div>
             </div>
@@ -390,6 +391,12 @@
                     if (score <= 50) return 'bg-yellow-500';
                     if (score <= 75) return 'bg-orange-500';
                     return 'bg-red-500';
+                },
+
+                hasWhoisData() {
+                    const w = this.result?.enrichment?.whois;
+                    if (!w || typeof w !== 'object') return false;
+                    return Object.values(w).some(v => Boolean(v));
                 },
 
                 exportHtml() {
