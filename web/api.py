@@ -33,7 +33,9 @@ app = FastAPI(
 class CheckRequest(BaseModel):
     url: str
     sources: Optional[list[str]] = None
-    enrich: Optional[list[str]] = None  # ["dns", "whois", "asn_geo", "redirects", "ssl", "screenshot"]
+    enrich: Optional[list[str]] = (
+        None  # ["dns", "whois", "asn_geo", "redirects", "ssl", "screenshot"]
+    )
     timeout: Optional[int] = 30
 
 
@@ -164,7 +166,9 @@ async def get_screenshot(path: str = Query(..., description="Absolute screenshot
     """Serve generated screenshot files to the web UI."""
     try:
         p = Path(path).resolve()
-        allowed_root = Path(os.getenv("URL_REPUTATION_SCREENSHOT_DIR", "/tmp/url-reputation-shots")).resolve()
+        allowed_root = Path(
+            os.getenv("URL_REPUTATION_SCREENSHOT_DIR", "/tmp/url-reputation-shots")
+        ).resolve()
         if not str(p).startswith(str(allowed_root)):
             raise HTTPException(status_code=403, detail="Screenshot path not allowed")
         if not p.exists() or not p.is_file():
