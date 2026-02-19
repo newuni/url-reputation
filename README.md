@@ -739,6 +739,14 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 
 Contributions welcome! 🐙
 
+## Responsible Use
+
+This project is intended for defensive security analysis and incident-response support.
+Do **not** use it for unauthorized access, abuse, disruption, fraud, or illegal activity.
+You are solely responsible for your usage and compliance with applicable laws.
+
+See also: [`SECURITY.md`](./SECURITY.md)
+
 ## License
 
-MIT
+MIT (see [`LICENSE`](./LICENSE))
