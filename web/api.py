@@ -7,7 +7,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -19,19 +19,21 @@ from pydantic import BaseModel
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from url_reputation import check_url_reputation, check_urls_batch
-from url_reputation.enrich import enrich
+from url_reputation.enrichment.service import enrich_indicator
+from url_reputation.models import IndicatorType
+from url_reputation.scoring import aggregate_risk_score
 
 app = FastAPI(
     title="URL Reputation Checker",
     description="Multi-source URL/domain security analysis",
-    version="1.1.0",
+    version="1.8.0",
 )
 
 
 class CheckRequest(BaseModel):
     url: str
     sources: Optional[list[str]] = None
-    enrich: Optional[list[str]] = None  # ["dns", "whois"]
+    enrich: Optional[list[str]] = None  # ["dns", "whois", "asn_geo", "redirects"]
     timeout: Optional[int] = 30
 
 
@@ -56,11 +58,30 @@ async def check_url(request: CheckRequest):
             url=request.url, sources=request.sources, timeout=request.timeout or 30
         )
 
-        # Add enrichment if requested
+        # Add enrichment if requested (same engine used by CLI)
         if request.enrich:
-            result["enrichment"] = enrich(
-                result["domain"], request.enrich, timeout=request.timeout or 30
+            indicator = result.get("indicator") or {}
+            indicator_type = cast(IndicatorType, str(indicator.get("type") or "domain"))
+            canonical = indicator.get("canonical") or result.get("domain") or request.url
+
+            result["enrichment"] = enrich_indicator(
+                str(canonical),
+                indicator_type=indicator_type,
+                types=request.enrich,
+                timeout=request.timeout or 30,
             )
+
+            # Recompute score/verdict so enrichment signals (e.g. new domain) can affect output.
+            sources_map = {
+                str(s.get("name")): (s.get("raw") or {})
+                for s in result.get("sources", [])
+                if isinstance(s, dict) and s.get("name")
+            }
+            agg = aggregate_risk_score(sources_map, enrichment=result.get("enrichment"))
+            result["risk_score"] = agg.risk_score
+            result["verdict"] = agg.verdict
+            result["score_breakdown"] = agg.score_breakdown
+            result["reasons"] = agg.reasons
 
         return result
     except Exception as e:

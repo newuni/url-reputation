@@ -11,33 +11,38 @@
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-4xl" x-data="urlChecker()">
+    <div class="container mx-auto px-4 py-6 md:py-8 max-w-4xl" x-data="urlChecker()">
         <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-white mb-2">🔍 URL Reputation Checker</h1>
-            <p class="text-gray-400">Multi-source security analysis for URLs and domains</p>
+        <header class="text-center mb-6 md:mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">🔍 URL Reputation Checker</h1>
+            <p class="text-gray-400 text-sm md:text-base">Multi-source security analysis for URLs, domains and IPs</p>
         </header>
 
         <!-- Input Form -->
-        <div class="bg-gray-800 rounded-lg p-6 mb-6 shadow-lg">
-            <form @submit.prevent="checkUrl" class="space-y-4">
+        <div class="bg-gray-800 rounded-lg p-4 md:p-6 mb-6 shadow-lg">
+            <form @submit.prevent="checkUrl" class="space-y-4" novalidate>
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Enter URL to check</label>
-                    <div class="flex gap-2">
-                        <input 
-                            type="text" 
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Enter URL, domain or IP</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input
+                            type="url"
                             x-model="url"
-                            placeholder="https://example.com"
+                            placeholder="example.com or https://example.com"
+                            inputmode="url"
+                            autocapitalize="off"
+                            autocorrect="off"
+                            autocomplete="off"
+                            spellcheck="false"
                             class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             :disabled="loading"
                         >
-                        <button 
+                        <button
                             type="submit"
                             class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-semibold transition-colors"
-                            :disabled="loading || !url"
+                            :disabled="loading || !url.trim()"
                         >
                             <span x-show="!loading">Check</span>
-                            <span x-show="loading" class="flex items-center gap-2">
+                            <span x-show="loading" class="flex items-center justify-center gap-2">
                                 <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -58,6 +63,28 @@
                         <input type="checkbox" x-model="options.enrichWhois" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
                         <span class="text-gray-300">WHOIS lookup</span>
                     </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="options.enrichAsnGeo" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                        <span class="text-gray-300">Geo + ASN</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="options.enrichTls" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                        <span class="text-gray-300">TLS cert</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="options.enrichScreenshot" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                        <span class="text-gray-300">Screenshot</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="options.watchEnabled" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
+                        <span class="text-gray-300">Auto-refresh</span>
+                    </label>
+                    <select x-model.number="options.watchSeconds" class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-200">
+                        <option :value="30">30s</option>
+                        <option :value="60">1m</option>
+                        <option :value="300">5m</option>
+                    </select>
+                    <button type="button" @click="exportHtml" class="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">Export report</button>
                 </div>
             </form>
         </div>
@@ -70,45 +97,52 @@
         <!-- Results -->
         <div x-show="result" x-cloak class="space-y-6">
             <!-- Verdict Card -->
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                <div class="flex items-center justify-between mb-4">
+            <div class="bg-gray-800 rounded-lg p-4 md:p-6 shadow-lg">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                     <div>
-                        <h2 class="text-xl font-semibold text-white" x-text="result?.url"></h2>
-                        <p class="text-gray-400 text-sm" x-text="'Domain: ' + result?.domain"></p>
+                        <h2 class="text-xl font-semibold text-white break-all" x-text="displayIndicator()"></h2>
+                        <p class="text-gray-400 text-sm" x-text="'Domain: ' + (displayDomain() || '—')"></p>
+                        <p class="text-gray-500 text-xs" x-text="'Type: ' + (result?.indicator?.type || 'unknown')"></p>
                     </div>
-                    <div class="text-right">
-                        <div 
+                    <div class="sm:text-right">
+                        <div
                             class="text-3xl font-bold"
                             :class="getVerdictColor(result?.verdict)"
-                            x-text="result?.verdict?.replace('_', ' ')"
+                            x-text="formatVerdict(result?.verdict)"
                         ></div>
                         <div class="text-gray-400">
-                            Score: <span class="font-mono" x-text="result?.risk_score"></span>/100
+                            Score: <span class="font-mono" x-text="result?.risk_score ?? 0"></span>/100
                         </div>
                     </div>
                 </div>
 
                 <!-- Risk Bar -->
                 <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
-                    <div 
+                    <div
                         class="h-full transition-all duration-500"
-                        :class="getBarColor(result?.risk_score)"
-                        :style="'width: ' + (result?.risk_score || 0) + '%'"
+                        :class="getBarColor(result?.risk_score ?? 0)"
+                        :style="'width: ' + (result?.risk_score ?? 0) + '%'"
                     ></div>
                 </div>
             </div>
 
             <!-- Sources -->
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                <h3 class="text-lg font-semibold text-white mb-4">📋 Source Results</h3>
+            <div class="bg-gray-800 rounded-lg p-4 md:p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-white">📋 Source Results</h3>
+                    <p class="text-xs text-gray-400" x-text="sourceSummary()"></p>
+                </div>
                 <div class="grid gap-3">
-                    <template x-for="(data, source) in result?.sources" :key="source">
-                        <div class="flex items-center justify-between bg-gray-700/50 rounded-lg px-4 py-3">
-                            <span class="font-medium text-gray-200" x-text="source"></span>
-                            <span 
-                                class="px-3 py-1 rounded-full text-sm font-medium"
-                                :class="data.listed ? 'bg-red-900/50 text-red-300' : 'bg-green-900/50 text-green-300'"
-                                x-text="data.listed ? '⚠️ Listed' : '✅ Clean'"
+                    <template x-for="src in normalizedSources()" :key="src.name">
+                        <div class="flex items-center justify-between gap-3 bg-gray-700/50 rounded-lg px-4 py-3">
+                            <div class="min-w-0">
+                                <p class="font-medium text-gray-200 truncate" x-text="prettySourceName(src.name)"></p>
+                                <p class="text-xs text-gray-400" x-show="src.status === 'error'" x-text="src.error || 'provider error'"></p>
+                            </div>
+                            <span
+                                class="px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap"
+                                :class="badgeClass(src)"
+                                x-text="badgeText(src)"
                             ></span>
                         </div>
                     </template>
@@ -116,19 +150,73 @@
             </div>
 
             <!-- Enrichment Data -->
-            <div x-show="result?.enrichment" class="bg-gray-800 rounded-lg p-6 shadow-lg">
+            <div x-show="result?.enrichment" class="bg-gray-800 rounded-lg p-4 md:p-6 shadow-lg">
                 <h3 class="text-lg font-semibold text-white mb-4">🔎 Enrichment Data</h3>
-                
+
                 <!-- DNS -->
                 <div x-show="result?.enrichment?.dns" class="mb-4">
                     <h4 class="text-md font-medium text-gray-300 mb-2">🌐 DNS Records</h4>
                     <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
                         <template x-for="(value, key) in result?.enrichment?.dns" :key="key">
-                            <div class="grid grid-cols-[140px_1fr] gap-2" x-show="value && (Array.isArray(value) ? value.length > 0 : true)">
+                            <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="value && (Array.isArray(value) ? value.length > 0 : true)">
                                 <span class="text-blue-400 truncate" x-text="key + ':'"></span>
                                 <span class="text-gray-300 break-all" x-text="Array.isArray(value) ? value.join(', ') : value"></span>
                             </div>
                         </template>
+                    </div>
+                </div>
+
+                <!-- ASN + GEO -->
+                <div x-show="result?.enrichment?.asn_geo" class="mb-4">
+                    <h4 class="text-md font-medium text-gray-300 mb-2">📍 ASN + Geo</h4>
+                    <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.asn_geo?.ips?.length">
+                            <span class="text-emerald-400 truncate">ips:</span>
+                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.asn_geo?.ips?.join(', ')"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.asn_geo?.asn?.number">
+                            <span class="text-emerald-400 truncate">asn:</span>
+                            <span class="text-gray-300 break-all" x-text="'AS' + result?.enrichment?.asn_geo?.asn?.number"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.asn_geo?.asn?.org">
+                            <span class="text-emerald-400 truncate">org:</span>
+                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.asn_geo?.asn?.org"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.asn_geo?.geo?.country || result?.enrichment?.asn_geo?.geo?.city">
+                            <span class="text-emerald-400 truncate">location:</span>
+                            <span class="text-gray-300 break-all" x-text="[result?.enrichment?.asn_geo?.geo?.city, result?.enrichment?.asn_geo?.geo?.region, result?.enrichment?.asn_geo?.geo?.country].filter(Boolean).join(', ')"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.asn_geo?.geo?.isp">
+                            <span class="text-emerald-400 truncate">isp:</span>
+                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.asn_geo?.geo?.isp"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TLS -->
+                <div x-show="result?.enrichment?.ssl" class="mb-4">
+                    <h4 class="text-md font-medium text-gray-300 mb-2">🔐 TLS Certificate</h4>
+                    <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.ssl?.issuer">
+                            <span class="text-cyan-400 truncate">issuer:</span>
+                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.ssl?.issuer"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.ssl?.not_after">
+                            <span class="text-cyan-400 truncate">expires:</span>
+                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.ssl?.not_after"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.ssl?.days_to_expiry !== null">
+                            <span class="text-cyan-400 truncate">days left:</span>
+                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.ssl?.days_to_expiry"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Screenshot -->
+                <div x-show="result?.enrichment?.screenshot?.path" class="mb-4">
+                    <h4 class="text-md font-medium text-gray-300 mb-2">🖼️ Screenshot</h4>
+                    <div class="bg-gray-700/50 rounded-lg p-4 text-sm">
+                        <p class="text-gray-300 break-all" x-text="result?.enrichment?.screenshot?.path"></p>
                     </div>
                 </div>
 
@@ -137,7 +225,7 @@
                     <h4 class="text-md font-medium text-gray-300 mb-2">📝 WHOIS Info</h4>
                     <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
                         <template x-for="(value, key) in result?.enrichment?.whois" :key="key">
-                            <div class="grid grid-cols-[140px_1fr] gap-2" x-show="value">
+                            <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="value">
                                 <span class="text-purple-400 truncate" x-text="key + ':'"></span>
                                 <span class="text-gray-300 break-all" x-text="value"></span>
                             </div>
@@ -148,7 +236,7 @@
 
             <!-- Timestamp -->
             <p class="text-center text-gray-500 text-sm">
-                Checked at: <span x-text="result?.checked_at"></span>
+                Checked at: <span x-text="formatTimestamp(result?.checked_at)"></span>
             </p>
         </div>
 
@@ -167,42 +255,123 @@
                 result: null,
                 options: {
                     enrichDns: false,
-                    enrichWhois: false
+                    enrichWhois: false,
+                    enrichAsnGeo: false,
+                    enrichTls: false,
+                    enrichScreenshot: false,
+                    watchEnabled: false,
+                    watchSeconds: 60
                 },
+                watchTimer: null,
 
                 async checkUrl() {
-                    if (!this.url) return;
-                    
+                    if (!this.url.trim()) return;
+
                     this.loading = true;
                     this.error = null;
                     this.result = null;
 
-                    // Build enrich array
                     const enrich = [];
                     if (this.options.enrichDns) enrich.push('dns');
                     if (this.options.enrichWhois) enrich.push('whois');
+                    if (this.options.enrichAsnGeo) enrich.push('asn_geo');
+                    if (this.options.enrichTls) enrich.push('ssl');
+                    if (this.options.enrichScreenshot) enrich.push('screenshot');
 
                     try {
                         const response = await fetch('/api/check', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                url: this.url,
+                                url: this.url.trim(),
                                 enrich: enrich.length ? enrich : null
                             })
                         });
 
+                        const data = await response.json();
+
                         if (!response.ok) {
-                            const data = await response.json();
                             throw new Error(data.detail || 'Request failed');
                         }
 
-                        this.result = await response.json();
+                        this.result = data;
                     } catch (e) {
-                        this.error = e.message;
+                        this.error = e?.message || 'Unexpected error';
                     } finally {
                         this.loading = false;
                     }
+                },
+
+                displayIndicator() {
+                    return this.result?.indicator?.input || this.result?.url || '—';
+                },
+
+                displayDomain() {
+                    return this.result?.indicator?.domain || this.result?.domain || '—';
+                },
+
+                formatVerdict(verdict) {
+                    return (verdict || 'UNKNOWN').replaceAll('_', ' ');
+                },
+
+                formatTimestamp(ts) {
+                    if (!ts) return '—';
+                    const d = new Date(ts);
+                    if (Number.isNaN(d.getTime())) return ts;
+                    return d.toLocaleString();
+                },
+
+                normalizedSources() {
+                    const sources = this.result?.sources;
+                    if (!sources) return [];
+
+                    // New schema v1: array
+                    if (Array.isArray(sources)) {
+                        return sources.map(s => ({
+                            name: s?.name || 'unknown',
+                            listed: s?.listed,
+                            status: s?.status || 'ok',
+                            error: s?.error || null
+                        }));
+                    }
+
+                    // Legacy fallback: object map
+                    if (typeof sources === 'object') {
+                        return Object.entries(sources).map(([name, val]) => ({
+                            name,
+                            listed: !!val?.listed,
+                            status: val?.error ? 'error' : 'ok',
+                            error: val?.error || null
+                        }));
+                    }
+
+                    return [];
+                },
+
+                sourceSummary() {
+                    const list = this.normalizedSources();
+                    const total = list.length;
+                    const listed = list.filter(s => s.listed === true).length;
+                    const errors = list.filter(s => s.status === 'error').length;
+                    return `${total} sources · ${listed} listed · ${errors} errors`;
+                },
+
+                prettySourceName(name) {
+                    return String(name || '')
+                        .replaceAll('_', ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                },
+
+                badgeClass(src) {
+                    if (src.status === 'error') return 'bg-amber-900/50 text-amber-300';
+                    if (src.listed === true) return 'bg-red-900/50 text-red-300';
+                    return 'bg-green-900/50 text-green-300';
+                },
+
+                badgeText(src) {
+                    if (src.status === 'error') return '⚠️ Error';
+                    if (src.listed === true) return '⚠️ Listed';
+                    return '✅ Clean';
                 },
 
                 getVerdictColor(verdict) {
@@ -210,7 +379,8 @@
                         'CLEAN': 'text-green-400',
                         'LOW_RISK': 'text-yellow-400',
                         'MEDIUM_RISK': 'text-orange-400',
-                        'HIGH_RISK': 'text-red-400'
+                        'HIGH_RISK': 'text-red-400',
+                        'ERROR': 'text-amber-400'
                     };
                     return colors[verdict] || 'text-gray-400';
                 },
@@ -220,6 +390,31 @@
                     if (score <= 50) return 'bg-yellow-500';
                     if (score <= 75) return 'bg-orange-500';
                     return 'bg-red-500';
+                },
+
+                exportHtml() {
+                    if (!this.result) return;
+                    const html = `<!doctype html><html><head><meta charset="utf-8"><title>URL Reputation Report</title></head><body><pre>${JSON.stringify(this.result, null, 2)}</pre></body></html>`;
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `url-reputation-${Date.now()}.html`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                },
+
+                init() {
+                    this.$watch('options.watchEnabled', (enabled) => {
+                        if (this.watchTimer) {
+                            clearInterval(this.watchTimer);
+                            this.watchTimer = null;
+                        }
+                        if (enabled) {
+                            this.watchTimer = setInterval(() => {
+                                if (!this.loading && this.url.trim()) this.checkUrl();
+                            }, Math.max(5000, this.options.watchSeconds * 1000));
+                        }
+                    });
                 }
             };
         }

@@ -46,6 +46,8 @@ DEFAULT_PROVIDER_WEIGHTS: dict[str, float] = {
     # Enrichment modules (when present)
     "redirects": 1.0,
     "whois": 1.0,
+    "ssl": 1.0,
+    "tls": 1.0,
 }
 
 
@@ -429,6 +431,50 @@ def aggregate_risk_score(
                             "creation_date": whois.get("creation_date"),
                         },
                     )
+
+        ssl_data = enrichment.get("ssl") or enrichment.get("tls") or enrichment.get("tls_cert")
+        if isinstance(ssl_data, Mapping):
+            if bool(ssl_data.get("expired")):
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.ssl.expired",
+                    provider="ssl",
+                    points=20,
+                    weights=weights,
+                    reason="SSL certificate expired",
+                    evidence={"expired": True},
+                )
+            days = ssl_data.get("days_to_expiry")
+            if isinstance(days, (int, float)) and 0 <= int(days) <= 14:
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.ssl.expiring_soon",
+                    provider="ssl",
+                    points=10,
+                    weights=weights,
+                    reason="SSL certificate expires soon",
+                    evidence={"days_to_expiry": int(days)},
+                )
+            if bool(ssl_data.get("self_signed")):
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.ssl.self_signed",
+                    provider="ssl",
+                    points=10,
+                    weights=weights,
+                    reason="Self-signed TLS certificate",
+                    evidence={"self_signed": True},
+                )
+            if ssl_data.get("hostname_match") is False:
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.ssl.hostname_mismatch",
+                    provider="ssl",
+                    points=10,
+                    weights=weights,
+                    reason="TLS certificate hostname mismatch",
+                    evidence={"hostname_match": False},
+                )
 
     # Deterministic ordering for explainability outputs.
     contribs_sorted = sorted(contribs, key=lambda c: (c.rule_id, c.provider, -c.weighted_points))

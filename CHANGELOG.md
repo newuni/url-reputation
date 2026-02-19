@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## [v1.8.0] - 2026-02-19
+### Added
+- F-block roadmap delivered end-to-end:
+  - Rich-enhanced pretty output (with plain fallback)
+  - Watch mode (`--watch`, `--watch-changes-only`)
+  - Script-friendly flags (`--quiet`, `--alert-above`)
+  - HTML reports (`--format html`, `--report-html`)
+  - SSL/TLS enrichment (`ssl`, `tls`, `tls_cert`) with scoring hooks
+  - Screenshot enrichment (`screenshot`, best-effort optional Playwright)
+- New HTML report renderer module: `url_reputation/html_report.py`.
+- Web UI parity updates: auto-refresh, export report action, TLS panel, screenshot section.
+
+### Changed
+- Web API enrichment path aligned with CLI enrichment engine and score recomputation.
+- Version bump to 1.8.0 across package + web API.
+
 ## [v1.7.0] - 2026-02-18
 ### Changed
 - Significant static-analysis hardening completed in staged blocks.
@@ -46,6 +62,7 @@ All notable changes to this project are documented here.
 ### Added
 - Initial release.
 
+[v1.8.0]: https://github.com/newuni/url-reputation/compare/v1.7.0...v1.8.0
 [v1.7.0]: https://github.com/newuni/url-reputation/compare/v1.6.0...v1.7.0
 [v1.6.0]: https://github.com/newuni/url-reputation/compare/v1.5.0...v1.6.0
 [v1.5.0]: https://github.com/newuni/url-reputation/compare/v1.4.1...v1.5.0

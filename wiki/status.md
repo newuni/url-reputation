@@ -676,3 +676,75 @@ Execution mode: continue in blocks, but run multiple blocks per cycle when safe.
   - Increase CI floor to `--cov-fail-under=80`
 - **DoD:** CI green with 80% floor
 - **Priority modules:** `cli.py`, `enrichment/asn_geo.py`, `providers/registry.py`, `sources/urlscan.py`, `sources/virustotal.py`
+
+---
+
+## Future Ideas (roadmap backlog)
+
+> Ideas requested by owner to convert into explicit trackable tasks.
+
+### F1 — Rich terminal output
+- **Status:** DONE
+- **Goal:** Improve CLI readability with rich colors, tables, badges, and progress UI.
+- **Deliverables:**
+  - Integrate `rich` as optional dependency for `--format pretty`
+  - Colored verdict blocks + per-source table + compact summary cards
+  - Graceful fallback to plain text when `rich` unavailable
+- **DoD:** `url-reputation example.com` shows enhanced rich output; tests cover fallback path.
+- **UI parity:** N/A (CLI-only)
+- **Notes:** `print_human_readable()` now uses Rich table/cards when available and falls back to legacy plain output when not installed.
+
+### F2 — Watch mode (`--watch`)
+- **Status:** DONE
+- **Goal:** Monitor one or multiple indicators periodically.
+- **Deliverables:**
+  - CLI flag: `--watch <interval>` (examples: `30s`, `5m`, `1h`)
+  - Loop with cancellation (`Ctrl+C`) and per-iteration timestamped output
+  - Optional dedupe mode: only print when verdict/score changes
+- **DoD:** Watch runs reliably with bounded resources and clean interruption.
+- **UI parity task (F2-WEB):** Add optional auto-refresh/polling in web UI (`30s/1m/5m`) with stop button and "changed since last run" highlighting.
+- **Notes:** Added `--watch` + `--watch-changes-only` and interval parser; web UI now has auto-refresh toggle and cadence selector.
+
+### F3 — Quiet / alert mode for scripting
+- **Status:** DONE
+- **Goal:** Make automation and shell scripting easier.
+- **Deliverables:**
+  - `--quiet` to suppress non-essential output
+  - `--alert-above <score>` to emit signal only when risk exceeds threshold
+  - Stable exit-code behavior documented for quiet mode
+- **DoD:** Can be safely used in cron/CI pipelines with predictable output.
+- **UI parity:** N/A (automation/CLI-focused)
+- **Notes:** Added `--quiet` and `--alert-above`; output now supports compact script-friendly lines while preserving exit-code semantics.
+
+### F4 — HTML report generation
+- **Status:** DONE
+- **Goal:** Create shareable visual reports.
+- **Deliverables:**
+  - `--format html` or `--report-html <path>`
+  - Styled report with verdict badges, source breakdown, enrichment blocks, and metadata
+  - Batch report summary with counts and worst indicators
+- **DoD:** Single and batch runs produce valid standalone HTML artifacts.
+- **UI parity task (F4-WEB):** Add "Export report" button in web UI (download HTML/PDF-ready) from current result or batch session.
+- **Notes:** Added `url_reputation/html_report.py`, new `--format html`, and `--report-html` output path for both single and batch flows; web UI includes Export report action.
+
+### F5 — SSL certificate checks
+- **Status:** DONE
+- **Goal:** Add TLS trust context to risk analysis.
+- **Deliverables:**
+  - New enrichment: `ssl` / `tls_cert`
+  - Fields: validity dates, days to expiry, issuer, subject/SAN, self-signed flag
+  - Basic certificate risk signals integrated into scoring reasons
+- **DoD:** `--enrich ssl` returns structured cert data + risk hints.
+- **UI parity task (F5-WEB):** Add TLS certificate panel in web UI (issuer, expiry, SANs, risk badges, days remaining).
+- **Notes:** Added SSL/TLS enrichers with certificate parsing and risk indicators; scoring now incorporates certificate expiry/mismatch/self-signed signals; web TLS panel added.
+
+### F6 — More enrichment sources (Screenshot + TLS analysis)
+- **Status:** DONE
+- **Goal:** Expand context for analyst workflows.
+- **Deliverables:**
+  - URL screenshot enrichment (headless capture + saved artifact path/URL)
+  - TLS analysis enrichment (protocol/cipher posture where feasible)
+  - Configurable timeouts and opt-in flags to control cost/latency
+- **DoD:** New enrichers available via `--enrich screenshot,tls` and documented in schema/docs.
+- **UI parity task (F6-WEB):** Render screenshot thumbnail + TLS posture card in web results (with expandable technical details).
+- **Notes:** Added `screenshot` enricher (best-effort, optional Playwright dependency) and `tls` alias enricher; web UI renders screenshot path panel and TLS card.

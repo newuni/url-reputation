@@ -11,10 +11,12 @@ import os
 import time
 from collections.abc import Iterable, Iterator
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
+from datetime import datetime
 from typing import Any, cast
 
 from .checker import check_url_reputation
 from .enrichment.service import enrich_indicator  # kept for test/backwards-compat patching
+from .html_report import to_html_batch, to_html_single
 from .markdown import to_markdown_batch, to_markdown_single
 from .models import IndicatorType
 from .output import (
@@ -50,7 +52,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--format",
-        choices=["pretty", "json", "ndjson", "sarif", "markdown"],
+        choices=["pretty", "json", "ndjson", "sarif", "markdown", "html"],
         default=None,
         help="Output format (default: pretty; --json is an alias for json)",
     )
@@ -118,7 +120,31 @@ def main() -> None:
         default="medium",
     )
     parser.add_argument(
-        "--enrich", help="Enrichment data to include: dns,whois (comma-separated)", default=None
+        "--enrich",
+        help="Enrichment data to include: dns,whois,asn_geo,redirects,ssl,tls,screenshot (comma-separated)",
+        default=None,
+    )
+    parser.add_argument(
+        "--watch",
+        help="Watch mode interval (e.g. 30s, 5m, 1h)",
+        default=None,
+    )
+    parser.add_argument(
+        "--watch-changes-only",
+        action="store_true",
+        help="In watch mode, print only when verdict or score changes",
+    )
+    parser.add_argument("--quiet", action="store_true", help="Reduce output for scripting")
+    parser.add_argument(
+        "--alert-above",
+        type=int,
+        default=None,
+        help="Emit output/alert only when risk score is >= threshold",
+    )
+    parser.add_argument(
+        "--report-html",
+        default=None,
+        help="Write HTML report to path (single or batch)",
     )
 
     args = parser.parse_args()
@@ -139,6 +165,10 @@ def main() -> None:
 
     exit_code = 0
 
+    watch_interval = parse_interval_seconds(args.watch) if args.watch else None
+    if args.watch and watch_interval is None:
+        parser.error("Invalid --watch interval. Use formats like 30s, 5m, 1h")
+
     # Batch mode: process file
     if args.file:
         results_iter = iter_urls_from_file(args.file)
@@ -158,10 +188,25 @@ def main() -> None:
         if out_format == "json":
             payload = list(results)
             print(json.dumps(payload, indent=2))
+            if args.report_html:
+                with open(args.report_html, "w", encoding="utf-8") as f:
+                    f.write(to_html_batch(payload))
             exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
         elif out_format == "markdown":
             payload = list(results)
             print(to_markdown_batch(payload))
+            if args.report_html:
+                with open(args.report_html, "w", encoding="utf-8") as f:
+                    f.write(to_html_batch(payload))
+            exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
+        elif out_format == "html":
+            payload = list(results)
+            html = to_html_batch(payload)
+            if args.report_html:
+                with open(args.report_html, "w", encoding="utf-8") as f:
+                    f.write(html)
+            else:
+                print(html)
             exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
         elif out_format == "ndjson":
             worst = "CLEAN"
@@ -177,7 +222,11 @@ def main() -> None:
             exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
         else:
             payload = list(results)
-            print_batch_results(payload)
+            if not args.quiet:
+                print_batch_results(payload)
+            if args.report_html:
+                with open(args.report_html, "w", encoding="utf-8") as f:
+                    f.write(to_html_batch(payload))
             exit_code = exit_code_from_results(payload, fail_on=args.fail_on)
 
     else:
@@ -190,61 +239,89 @@ def main() -> None:
             cache_path = default_cache_path() if args.cache == "default" else args.cache
             cache_ttl_seconds = parse_ttl(args.cache_ttl)
 
-        result = check_url_reputation(
-            args.url,
-            sources,
-            args.timeout,
-            cache_path=cache_path,
-            cache_ttl_seconds=cache_ttl_seconds,
-        )
+        enrich_types = [t.strip() for t in args.enrich.split(",")] if args.enrich else []
+        last_sig: tuple[str, int] | None = None
 
-        # Add enrichment if requested (kept for backwards-compat and CLI tests).
-        if args.enrich:
-            enrich_types = [t.strip() for t in args.enrich.split(",")]
-            ind = result.get("indicator") or {}
-            indicator_type_raw = ind.get("type") or "domain"
-            indicator_type = cast(IndicatorType, str(indicator_type_raw))
-            indicator_canonical = ind.get("canonical") or result.get("domain")
-
-            # Use canonical indicator so enrichers see normalized input.
-            result["enrichment"] = enrich_indicator(
-                str(indicator_canonical),
-                indicator_type=indicator_type,
-                types=enrich_types,
-                timeout=args.timeout,
+        while True:
+            result = check_url_reputation(
+                args.url,
+                sources,
+                args.timeout,
+                cache_path=cache_path,
+                cache_ttl_seconds=cache_ttl_seconds,
             )
 
-            # Recompute aggregated score so enrichment-based rules can contribute (T19).
-            sources_map: dict[str, dict[str, Any]] = {
-                str(s["name"]): cast(dict[str, Any], (s.get("raw") or {}))
-                for s in result.get("sources", [])
-                if isinstance(s, dict) and s.get("name")
-            }
-            agg = aggregate_risk_score(sources_map, enrichment=result.get("enrichment"))
-            result["risk_score"] = agg.risk_score
-            result["verdict"] = agg.verdict
-            result["score_breakdown"] = agg.score_breakdown
-            result["reasons"] = agg.reasons
+            if enrich_types:
+                ind = result.get("indicator") or {}
+                indicator_type_raw = ind.get("type") or "domain"
+                indicator_type = cast(IndicatorType, str(indicator_type_raw))
+                indicator_canonical = ind.get("canonical") or result.get("domain")
 
-        if out_format == "json":
-            if args.legacy_json:
-                # Provide a legacy map of provider results for older consumers.
-                result["sources_map"] = {
-                    s.get("name"): s.get("raw") for s in result.get("sources", [])
+                result["enrichment"] = enrich_indicator(
+                    str(indicator_canonical),
+                    indicator_type=indicator_type,
+                    types=enrich_types,
+                    timeout=args.timeout,
+                )
+
+                sources_map: dict[str, dict[str, Any]] = {
+                    str(s["name"]): cast(dict[str, Any], (s.get("raw") or {}))
+                    for s in result.get("sources", [])
+                    if isinstance(s, dict) and s.get("name")
                 }
-            print(json.dumps(result, indent=2, ensure_ascii=False))
-        elif out_format == "markdown":
-            print(to_markdown_single(result))
-        elif out_format == "sarif":
-            print(json.dumps(to_sarif([result]), indent=2))
-        else:
-            print_human_readable(result)
-            if args.enrich:
-                print_enrichment(result.get("enrichment", {}))
+                agg = aggregate_risk_score(sources_map, enrichment=result.get("enrichment"))
+                result["risk_score"] = agg.risk_score
+                result["verdict"] = agg.verdict
+                result["score_breakdown"] = agg.score_breakdown
+                result["reasons"] = agg.reasons
 
-        # Send webhook notification if configured
-        _maybe_send_webhook(result, args)
-        exit_code = exit_code_from_verdict(result.get("verdict", "ERROR"), fail_on=args.fail_on)
+            score = int(result.get("risk_score", 0) or 0)
+            sig = (str(result.get("verdict", "ERROR")), score)
+            changed = (sig != last_sig)
+            last_sig = sig
+            should_emit = (args.alert_above is None or score >= args.alert_above) and (
+                not (args.watch_changes_only and not changed)
+            )
+
+            if should_emit:
+                if out_format == "json":
+                    if args.legacy_json:
+                        result["sources_map"] = {
+                            s.get("name"): s.get("raw") for s in result.get("sources", [])
+                        }
+                    print(json.dumps(result, indent=2, ensure_ascii=False))
+                elif out_format == "markdown":
+                    print(to_markdown_single(result))
+                elif out_format == "html":
+                    html = to_html_single(result)
+                    if args.report_html:
+                        with open(args.report_html, "w", encoding="utf-8") as f:
+                            f.write(html)
+                    else:
+                        print(html)
+                elif out_format == "sarif":
+                    print(json.dumps(to_sarif([result]), indent=2))
+                else:
+                    if not args.quiet:
+                        if watch_interval:
+                            print(f"\n[{datetime.now().isoformat(timespec='seconds')}] Watch tick")
+                        print_human_readable(result)
+                        if enrich_types:
+                            print_enrichment(result.get("enrichment", {}))
+                    elif args.alert_above is None or score >= args.alert_above:
+                        print(f"{result.get('verdict')} {score} {result.get('url')}")
+
+                if args.report_html and out_format != "html":
+                    with open(args.report_html, "w", encoding="utf-8") as f:
+                        f.write(to_html_single(result))
+
+                _maybe_send_webhook(result, args)
+
+            exit_code = exit_code_from_verdict(result.get("verdict", "ERROR"), fail_on=args.fail_on)
+
+            if watch_interval is None:
+                break
+            time.sleep(watch_interval)
 
     raise SystemExit(exit_code)
 
@@ -403,6 +480,24 @@ def run_batch(
                     next_index += 1
 
 
+def parse_interval_seconds(value: str | None) -> int | None:
+    if not value:
+        return None
+    s = value.strip().lower()
+    try:
+        if s.endswith("ms"):
+            return max(1, int(float(s[:-2]) / 1000))
+        if s.endswith("s"):
+            return max(1, int(float(s[:-1])))
+        if s.endswith("m"):
+            return max(1, int(float(s[:-1]) * 60))
+        if s.endswith("h"):
+            return max(1, int(float(s[:-1]) * 3600))
+        return max(1, int(float(s)))
+    except Exception:
+        return None
+
+
 def _maybe_send_webhook(result: dict[str, Any], args: argparse.Namespace) -> None:
     """Send webhook notification if configured and criteria met."""
     webhook_url = args.webhook or os.getenv("WEBHOOK_URL")
@@ -477,6 +572,41 @@ def print_enrichment(enrichment: dict[str, Any]) -> None:
         if whois.get("error"):
             print(f"  ⚠️ {whois['error']}")
 
+    if "asn_geo" in enrichment:
+        ag = enrichment["asn_geo"]
+        print("\n📍 ASN/Geo:")
+        if ag.get("ips"):
+            print(f"  IPs:      {', '.join(ag.get('ips', [])[:4])}")
+        asn = ag.get("asn") or {}
+        if asn.get("number"):
+            print(f"  ASN:      AS{asn.get('number')} {asn.get('org') or ''}".rstrip())
+        geo = ag.get("geo") or {}
+        loc = ", ".join(
+            [x for x in [geo.get("city"), geo.get("region"), geo.get("country")] if isinstance(x, str)]
+        )
+        if loc:
+            print(f"  Location: {loc}")
+
+    ssl_data = enrichment.get("ssl") or enrichment.get("tls") or enrichment.get("tls_cert")
+    if isinstance(ssl_data, dict):
+        print("\n🔐 TLS Certificate:")
+        if ssl_data.get("issuer"):
+            print(f"  Issuer:   {ssl_data.get('issuer')}")
+        if ssl_data.get("not_after"):
+            print(f"  Expires:  {ssl_data.get('not_after')} ({ssl_data.get('days_to_expiry')} days)")
+        if ssl_data.get("self_signed"):
+            print("  ⚠️ Self-signed certificate")
+        if ssl_data.get("hostname_match") is False:
+            print("  ⚠️ Hostname mismatch")
+
+    if "screenshot" in enrichment:
+        shot = enrichment["screenshot"]
+        print("\n🖼️ Screenshot:")
+        if shot.get("path"):
+            print(f"  Path:     {shot.get('path')}")
+        elif shot.get("reason"):
+            print(f"  Skipped:  {shot.get('reason')}")
+
     # Risk indicators
     if "risk_indicators" in enrichment:
         print("\n⚠️ Risk Indicators:")
@@ -528,7 +658,54 @@ def print_batch_results(results: list[dict[str, Any]]) -> None:
 
 
 def print_human_readable(result: dict[str, Any]) -> None:
-    """Print human-readable output."""
+    """Print human-readable output (Rich when available, plain fallback otherwise)."""
+    try:
+        from rich.console import Console
+        from rich.table import Table
+
+        console = Console()
+        verdict = str(result.get("verdict", "UNKNOWN"))
+        score = int(result.get("risk_score", 0) or 0)
+        color = {
+            "CLEAN": "green",
+            "LOW_RISK": "yellow",
+            "MEDIUM_RISK": "orange3",
+            "HIGH_RISK": "red",
+            "ERROR": "bright_red",
+        }.get(verdict, "white")
+        verdict_emoji = {"CLEAN": "✅", "LOW_RISK": "⚠️", "MEDIUM_RISK": "🟠", "HIGH_RISK": "🔴", "ERROR": "❌"}
+        console.print(f"\n[bold]🔍 URL Reputation Report[/bold]  [dim]{result.get('url')}[/dim]")
+        console.print(f"{verdict_emoji.get(verdict, '❓')} Verdict: [{color}]{verdict}[/{color}]  Score: [bold]{score}[/bold]/100")
+
+        table = Table(title="Source Results")
+        table.add_column("Source")
+        table.add_column("Status")
+        table.add_column("Detail")
+        for src in result.get("sources", []):
+            source = str(src.get("name", "unknown"))
+            status = str(src.get("status", "ok"))
+            data = src.get("raw", {})
+            err = src.get("error")
+            if status == "error" or err:
+                detail = f"Error: {err or 'unknown'}"
+                s_text = "❌ error"
+            elif source == "virustotal":
+                detail = f"{data.get('detected', 0)}/{data.get('total', 0)} engines detected"
+                s_text = "⚠️ Listed" if (data.get("detected", 0) or 0) > 0 else "✅ Clean"
+            elif data.get("listed") or data.get("malicious"):
+                detail = str(data.get("threat_type") or data.get("match_type") or "listed")
+                s_text = "⚠️ Listed"
+            else:
+                detail = "clean"
+                s_text = "✅ Clean"
+            table.add_row(source, s_text, detail)
+
+        console.print(table)
+        console.print(f"[dim]Checked at: {result.get('checked_at')}[/dim]")
+        return
+    except Exception:
+        pass
+
     print("\n🔍 URL Reputation Report")
     print(f"{'=' * 50}")
     print(f"URL:    {result['url']}")
@@ -543,7 +720,6 @@ def print_human_readable(result: dict[str, Any]) -> None:
     print("\n📋 Source Results:")
     print(f"{'-' * 50}")
 
-    # Schema v1: sources is a list of source results
     for src in result.get("sources", []):
         source = src.get("name", "unknown")
         status = src.get("status")

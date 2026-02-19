@@ -1,6 +1,6 @@
 [project]
 name = "url-reputation"
-version = "1.7.0"
+version = "1.8.0"
 description = "Multi-source URL/domain security reputation checker"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -31,6 +31,7 @@ dependencies = [
 full = [
     "dnspython>=2.0.0",
     "python-whois>=0.8.0",
+    "rich>=13.0.0",
 ]
 
 # Development dependencies
