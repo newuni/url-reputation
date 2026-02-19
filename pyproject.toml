@@ -1,6 +1,6 @@
 [project]
 name = "url-reputation"
-version = "1.8.0"
+version = "1.9.0"
 description = "Multi-source URL/domain security reputation checker"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -45,6 +45,7 @@ dev = [
     "matplotlib>=3.5.0",
     "ruff>=0.9.0",
     "mypy>=1.10.0",
+    "types-requests>=2.32.0.20241016",
 ]
 
 [tool.ruff]
@@ -77,6 +78,10 @@ disallow_untyped_defs = true
 strict_equality = true
 ignore_missing_imports = true
 # Enforceable baseline: avoid global error suppression; tighten options over time.
+
+[[tool.mypy.overrides]]
+module = ["requests"]
+ignore_missing_imports = true
 
 [project.urls]
 Homepage = "https://github.com/newuni/url-reputation"

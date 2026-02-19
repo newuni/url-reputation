@@ -26,7 +26,7 @@ from url_reputation.scoring import aggregate_risk_score
 app = FastAPI(
     title="URL Reputation Checker",
     description="Multi-source URL/domain security analysis",
-    version="1.8.0",
+    version="1.9.0",
 )
 
 

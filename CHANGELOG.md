@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [v1.9.0] - 2026-02-19
+### Added
+- HN-ready web UX improvements for screenshot enrichment:
+  - Dedicated `/api/screenshot-capture` endpoint (decoupled from main check)
+  - UI async screenshot fetch with loading state
+  - Screenshot preview rendering through `/api/screenshot` file-serving endpoint
+- Screenshot backend fallback now works in web deployments without Playwright (`thumio`).
+
+### Fixed
+- Geo enrichment compatibility fix for `ip-api` free-tier endpoint behavior.
+- TLS web output reliability and hostname matching behavior.
+- WHOIS empty-state clarity in web UI.
+- CI stability: restored lint/type/test/coverage green after F-block additions.
+
+### Security
+- Repository scanned for leaked secrets before release (no real keys detected in tracked files).
+- Kept keyless default path working (free sources + optional enrichers).
+
 ## [v1.8.0] - 2026-02-19
 ### Added
 - F-block roadmap delivered end-to-end:
@@ -62,6 +80,7 @@ All notable changes to this project are documented here.
 ### Added
 - Initial release.
 
+[v1.9.0]: https://github.com/newuni/url-reputation/compare/v1.8.0...v1.9.0
 [v1.8.0]: https://github.com/newuni/url-reputation/compare/v1.7.0...v1.8.0
 [v1.7.0]: https://github.com/newuni/url-reputation/compare/v1.6.0...v1.7.0
 [v1.6.0]: https://github.com/newuni/url-reputation/compare/v1.5.0...v1.6.0

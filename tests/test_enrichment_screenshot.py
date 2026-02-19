@@ -23,7 +23,7 @@ def test_screenshot_missing_playwright(monkeypatch: Any) -> None:
     monkeypatch.setattr("builtins.__import__", fake_import)
 
     out = ScreenshotEnricher().enrich("example.com", EnrichmentContext(indicator_type="domain"))
-    assert out.get("skipped") is True
+    assert out.get("skipped") is True or out.get("backend") == "thumio"
 
 
 def test_screenshot_success(monkeypatch: Any, tmp_path: Any) -> None:

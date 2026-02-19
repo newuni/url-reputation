@@ -4,7 +4,7 @@ from .checker import check_url_reputation, check_urls_batch
 from .enrich import enrich, enrich_dns, enrich_whois
 from .webhook import notify_on_risk, send_webhook, verify_signature
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 __all__ = [
     "check_url_reputation",
     "check_urls_batch",
