@@ -213,10 +213,12 @@
                 </div>
 
                 <!-- Screenshot -->
-                <div x-show="result?.enrichment?.screenshot?.path" class="mb-4">
+                <div x-show="result?.enrichment?.screenshot" class="mb-4">
                     <h4 class="text-md font-medium text-gray-300 mb-2">🖼️ Screenshot</h4>
-                    <div class="bg-gray-700/50 rounded-lg p-4 text-sm">
-                        <p class="text-gray-300 break-all" x-text="result?.enrichment?.screenshot?.path"></p>
+                    <div class="bg-gray-700/50 rounded-lg p-4 text-sm space-y-2">
+                        <p x-show="result?.enrichment?.screenshot?.path" class="text-gray-300 break-all" x-text="result?.enrichment?.screenshot?.path"></p>
+                        <p x-show="result?.enrichment?.screenshot?.backend" class="text-gray-400" x-text="'backend: ' + result?.enrichment?.screenshot?.backend"></p>
+                        <p x-show="result?.enrichment?.screenshot?.reason" class="text-gray-400" x-text="result?.enrichment?.screenshot?.reason"></p>
                     </div>
                 </div>
 

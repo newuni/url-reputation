@@ -1,6 +1,7 @@
 """Screenshot enrichment (best-effort).
 
-Optional dependency: playwright. If unavailable, returns skipped reason.
+Primary backend: playwright (local headless browser).
+Fallback backend: thum.io HTTP screenshot fetch when playwright isn't available.
 """
 
 from __future__ import annotations
@@ -33,31 +34,54 @@ class ScreenshotEnricher(Enricher):
 
         try:
             from playwright.sync_api import sync_playwright
+
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page(viewport={"width": 1366, "height": 900})
+                    page.goto(
+                        target_url,
+                        wait_until="domcontentloaded",
+                        timeout=max(1000, int(ctx.timeout) * 1000),
+                    )
+                    page.screenshot(path=str(out_path), full_page=True)
+                    browser.close()
+                return {
+                    "target_url": target_url,
+                    "path": str(out_path),
+                    "exists": out_path.exists(),
+                    "backend": "playwright",
+                }
+            except Exception:
+                pass
         except Exception:
-            return {
-                "skipped": True,
-                "reason": "playwright not installed",
-                "target_url": target_url,
-            }
+            pass
 
         try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page(viewport={"width": 1366, "height": 900})
-                page.goto(
-                    target_url,
-                    wait_until="domcontentloaded",
-                    timeout=max(1000, int(ctx.timeout) * 1000),
-                )
-                page.screenshot(path=str(out_path), full_page=True)
-                browser.close()
+            import requests
+
+            shot_url = f"https://image.thum.io/get/width/1366/noanimate/{target_url}"
+            resp = requests.get(shot_url, timeout=max(3, int(ctx.timeout)), stream=True)
+            if resp.ok and str(resp.headers.get("content-type", "")).startswith("image/"):
+                with open(out_path, "wb") as f:
+                    for chunk in resp.iter_content(chunk_size=16384):
+                        if chunk:
+                            f.write(chunk)
+                return {
+                    "target_url": target_url,
+                    "path": str(out_path),
+                    "exists": out_path.exists(),
+                    "backend": "thumio",
+                }
             return {
                 "target_url": target_url,
-                "path": str(out_path),
-                "exists": out_path.exists(),
+                "skipped": True,
+                "reason": f"screenshot backend unavailable ({resp.status_code})",
             }
         except Exception as e:
             return {
                 "target_url": target_url,
+                "skipped": True,
+                "reason": "playwright/thumio unavailable",
                 "error": str(e),
             }
