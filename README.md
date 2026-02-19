@@ -739,6 +739,17 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 
 Contributions welcome! 🐙
 
+## Third-Party Services & Trademarks
+
+This project integrates data from third-party services/APIs (for example: URLhaus, OpenPhish,
+DNSBL providers, AlienVault OTX, VirusTotal, URLScan, Google Safe Browsing, AbuseIPDB,
+IPQualityScore, ThreatFox), depending on your configuration.
+
+- This project is **not affiliated with, endorsed by, or sponsored by** any of those providers.
+- All trademarks, product names, and service names are the property of their respective owners.
+- Users are responsible for complying with each provider’s Terms of Service, rate limits, and usage policies.
+- API-backed providers require your own credentials; this repository does not grant third-party service rights.
+
 ## Responsible Use
 
 This project is intended for defensive security analysis and incident-response support.
