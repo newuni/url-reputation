@@ -277,7 +277,7 @@ def main() -> None:
 
             score = int(result.get("risk_score", 0) or 0)
             sig = (str(result.get("verdict", "ERROR")), score)
-            changed = (sig != last_sig)
+            changed = sig != last_sig
             last_sig = sig
             should_emit = (args.alert_above is None or score >= args.alert_above) and (
                 not (args.watch_changes_only and not changed)
@@ -582,7 +582,11 @@ def print_enrichment(enrichment: dict[str, Any]) -> None:
             print(f"  ASN:      AS{asn.get('number')} {asn.get('org') or ''}".rstrip())
         geo = ag.get("geo") or {}
         loc = ", ".join(
-            [x for x in [geo.get("city"), geo.get("region"), geo.get("country")] if isinstance(x, str)]
+            [
+                x
+                for x in [geo.get("city"), geo.get("region"), geo.get("country")]
+                if isinstance(x, str)
+            ]
         )
         if loc:
             print(f"  Location: {loc}")
@@ -593,7 +597,9 @@ def print_enrichment(enrichment: dict[str, Any]) -> None:
         if ssl_data.get("issuer"):
             print(f"  Issuer:   {ssl_data.get('issuer')}")
         if ssl_data.get("not_after"):
-            print(f"  Expires:  {ssl_data.get('not_after')} ({ssl_data.get('days_to_expiry')} days)")
+            print(
+                f"  Expires:  {ssl_data.get('not_after')} ({ssl_data.get('days_to_expiry')} days)"
+            )
         if ssl_data.get("self_signed"):
             print("  ⚠️ Self-signed certificate")
         if ssl_data.get("hostname_match") is False:
@@ -673,9 +679,17 @@ def print_human_readable(result: dict[str, Any]) -> None:
             "HIGH_RISK": "red",
             "ERROR": "bright_red",
         }.get(verdict, "white")
-        verdict_emoji = {"CLEAN": "✅", "LOW_RISK": "⚠️", "MEDIUM_RISK": "🟠", "HIGH_RISK": "🔴", "ERROR": "❌"}
+        verdict_emoji = {
+            "CLEAN": "✅",
+            "LOW_RISK": "⚠️",
+            "MEDIUM_RISK": "🟠",
+            "HIGH_RISK": "🔴",
+            "ERROR": "❌",
+        }
         console.print(f"\n[bold]🔍 URL Reputation Report[/bold]  [dim]{result.get('url')}[/dim]")
-        console.print(f"{verdict_emoji.get(verdict, '❓')} Verdict: [{color}]{verdict}[/{color}]  Score: [bold]{score}[/bold]/100")
+        console.print(
+            f"{verdict_emoji.get(verdict, '❓')} Verdict: [{color}]{verdict}[/{color}]  Score: [bold]{score}[/bold]/100"
+        )
 
         table = Table(title="Source Results")
         table.add_column("Source")

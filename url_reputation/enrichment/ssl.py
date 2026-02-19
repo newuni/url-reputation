@@ -57,7 +57,10 @@ class SslCertEnricher(Enricher):
             # so we can report mismatch explicitly in enrichment output.
             context.check_hostname = False
 
-            with socket.create_connection((host, port), timeout=max(1, int(ctx.timeout))) as sock, context.wrap_socket(sock, server_hostname=host) as ssock:
+            with (
+                socket.create_connection((host, port), timeout=max(1, int(ctx.timeout))) as sock,
+                context.wrap_socket(sock, server_hostname=host) as ssock,
+            ):
                 cert = cast(dict[str, Any], ssock.getpeercert() or {})
 
             subject_parts = cast(list[tuple[tuple[str, str], ...]], cert.get("subject", ()))
@@ -70,12 +73,16 @@ class SslCertEnricher(Enricher):
             not_before_raw = cert.get("notBefore")
             not_after_raw = cert.get("notAfter")
             not_before = (
-                datetime.strptime(not_before_raw, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+                datetime.strptime(not_before_raw, "%b %d %H:%M:%S %Y %Z").replace(
+                    tzinfo=timezone.utc
+                )
                 if isinstance(not_before_raw, str)
                 else None
             )
             not_after = (
-                datetime.strptime(not_after_raw, "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+                datetime.strptime(not_after_raw, "%b %d %H:%M:%S %Y %Z").replace(
+                    tzinfo=timezone.utc
+                )
                 if isinstance(not_after_raw, str)
                 else None
             )
@@ -88,9 +95,9 @@ class SslCertEnricher(Enricher):
                 expired = days_to_expiry < 0
 
             hostname_match = False
-            host_l = host.lower().strip('.')
+            host_l = host.lower().strip(".")
             for pattern in san:
-                pat = pattern.lower().strip('.')
+                pat = pattern.lower().strip(".")
                 if fnmatch(host_l, pat):
                     hostname_match = True
                     break
@@ -99,7 +106,9 @@ class SslCertEnricher(Enricher):
                     # fallback to CN
                     for rdn in subject_parts:
                         for key, value in rdn:
-                            if key == "commonName" and fnmatch(host_l, str(value).lower().strip('.')):
+                            if key == "commonName" and fnmatch(
+                                host_l, str(value).lower().strip(".")
+                            ):
                                 hostname_match = True
                                 break
                 except Exception:

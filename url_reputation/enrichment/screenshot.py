@@ -44,7 +44,11 @@ class ScreenshotEnricher(Enricher):
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page(viewport={"width": 1366, "height": 900})
-                page.goto(target_url, wait_until="domcontentloaded", timeout=max(1000, int(ctx.timeout) * 1000))
+                page.goto(
+                    target_url,
+                    wait_until="domcontentloaded",
+                    timeout=max(1000, int(ctx.timeout) * 1000),
+                )
                 page.screenshot(path=str(out_path), full_page=True)
                 browser.close()
             return {
