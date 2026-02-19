@@ -7,7 +7,7 @@ from url_reputation.enrichment.ssl import SslCertEnricher
 
 
 class _FakeSocket:
-    def __enter__(self) -> "_FakeSocket":
+    def __enter__(self) -> _FakeSocket:
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
@@ -18,7 +18,7 @@ class _FakeWrapped:
     def __init__(self, cert: dict[str, Any]) -> None:
         self._cert = cert
 
-    def __enter__(self) -> "_FakeWrapped":
+    def __enter__(self) -> _FakeWrapped:
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:

@@ -28,7 +28,7 @@ def test_screenshot_missing_playwright(monkeypatch: Any) -> None:
 
 def test_screenshot_success(monkeypatch: Any, tmp_path: Any) -> None:
     class FakePage:
-        def new_page(self, viewport: dict[str, int]) -> "FakePage":
+        def new_page(self, viewport: dict[str, int]) -> FakePage:
             return self
 
         def goto(self, *args: Any, **kwargs: Any) -> None:
@@ -52,7 +52,7 @@ def test_screenshot_success(monkeypatch: Any, tmp_path: Any) -> None:
     class FakePlaywrightCtx:
         chromium = FakeChromium()
 
-        def __enter__(self) -> "FakePlaywrightCtx":
+        def __enter__(self) -> FakePlaywrightCtx:
             return self
 
         def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
