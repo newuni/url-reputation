@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional, cast
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -114,6 +114,23 @@ async def check_batch(request: BatchRequest):
         return {"summary": summary, "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/api/screenshot")
+async def get_screenshot(path: str = Query(..., description="Absolute screenshot file path")):
+    """Serve generated screenshot files to the web UI."""
+    try:
+        p = Path(path).resolve()
+        allowed_root = Path(os.getenv("URL_REPUTATION_SCREENSHOT_DIR", "/tmp/url-reputation-shots")).resolve()
+        if not str(p).startswith(str(allowed_root)):
+            raise HTTPException(status_code=403, detail="Screenshot path not allowed")
+        if not p.exists() or not p.is_file():
+            raise HTTPException(status_code=404, detail="Screenshot not found")
+        return FileResponse(p)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.get("/api/sources")
