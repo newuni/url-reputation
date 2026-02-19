@@ -720,14 +720,20 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 - [x] **DNS/Whois lookup** - `--enrich dns,whois` for domain intel
 - [x] **Docker web UI** - REST API + visual frontend with Docker Compose
 
-### 🚧 Future Ideas
+### ✅ F-block completed (v1.8.0)
 
-- [ ] **Rich terminal output** - Colors and formatting with Rich library
-- [ ] **Watch mode** - Monitor URLs periodically (`--watch 1h`)
-- [ ] **Quiet mode** - `--quiet` / `--alert-above 50` for scripting
-- [ ] **HTML report** - Generate visual report with badges
-- [ ] **SSL certificate check** - Validity, expiration, issuer
-- [ ] **More enrichment sources** - Screenshot, TLS analysis
+- [x] **Rich terminal output** - Colors/tables with Rich + plain fallback
+- [x] **Watch mode** - Periodic monitoring (`--watch 30s|5m|1h`) + `--watch-changes-only`
+- [x] **Quiet mode** - `--quiet` / `--alert-above` for scripting
+- [x] **HTML report** - `--format html` and `--report-html <path>`
+- [x] **SSL certificate check** - issuer/subject/SAN, expiry, hostname match, self-signed flags
+- [x] **More enrichment sources** - `screenshot` + `tls`/`tls_cert`
+
+### 🧭 Next ideas
+
+- [ ] Configurable screenshot storage/retention policy
+- [ ] Stronger TLS posture analysis (protocol/cipher grading)
+- [ ] UI thumbnails for screenshots (not only artifact path)
 
 Contributions welcome! 🐙
 
