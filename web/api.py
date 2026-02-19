@@ -33,7 +33,12 @@ app = FastAPI(
 class CheckRequest(BaseModel):
     url: str
     sources: Optional[list[str]] = None
-    enrich: Optional[list[str]] = None  # ["dns", "whois", "asn_geo", "redirects"]
+    enrich: Optional[list[str]] = None  # ["dns", "whois", "asn_geo", "redirects", "ssl", "screenshot"]
+    timeout: Optional[int] = 30
+
+
+class ScreenshotRequest(BaseModel):
+    url: str
     timeout: Optional[int] = 30
 
 
@@ -60,16 +65,29 @@ async def check_url(request: CheckRequest):
 
         # Add enrichment if requested (same engine used by CLI)
         if request.enrich:
+            # Screenshot is intentionally excluded from this main request to keep UI responsive.
+            enrich_types = [t for t in request.enrich if t != "screenshot"]
+
             indicator = result.get("indicator") or {}
             indicator_type = cast(IndicatorType, str(indicator.get("type") or "domain"))
             canonical = indicator.get("canonical") or result.get("domain") or request.url
 
-            result["enrichment"] = enrich_indicator(
-                str(canonical),
-                indicator_type=indicator_type,
-                types=request.enrich,
-                timeout=request.timeout or 30,
+            result["enrichment"] = (
+                enrich_indicator(
+                    str(canonical),
+                    indicator_type=indicator_type,
+                    types=enrich_types,
+                    timeout=request.timeout or 30,
+                )
+                if enrich_types
+                else {}
             )
+
+            if "screenshot" in request.enrich:
+                result["enrichment"]["screenshot"] = {
+                    "pending": True,
+                    "reason": "queued_separate_request",
+                }
 
             # Recompute score/verdict so enrichment signals (e.g. new domain) can affect output.
             sources_map = {
@@ -112,6 +130,31 @@ async def check_batch(request: BatchRequest):
         }
 
         return {"summary": summary, "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/api/screenshot-capture")
+async def screenshot_capture(request: ScreenshotRequest):
+    """Capture screenshot in a dedicated request so /api/check remains fast."""
+    try:
+        base = check_url_reputation(url=request.url, timeout=request.timeout or 30)
+        indicator = base.get("indicator") or {}
+        indicator_type = cast(IndicatorType, str(indicator.get("type") or "domain"))
+        canonical = indicator.get("canonical") or base.get("domain") or request.url
+
+        shot = enrich_indicator(
+            str(canonical),
+            indicator_type=indicator_type,
+            types=["screenshot"],
+            timeout=request.timeout or 30,
+        ).get("screenshot", {})
+
+        return {
+            "url": request.url,
+            "indicator": indicator,
+            "screenshot": shot,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

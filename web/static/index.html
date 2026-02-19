@@ -222,6 +222,7 @@
                             alt="Screenshot preview"
                             class="w-full rounded border border-gray-600"
                         />
+                        <p x-show="screenshotLoading" class="text-blue-300">Capturando screenshot…</p>
                         <p x-show="result?.enrichment?.screenshot?.path" class="text-gray-300 break-all" x-text="result?.enrichment?.screenshot?.path"></p>
                         <p x-show="result?.enrichment?.screenshot?.backend" class="text-gray-400" x-text="'backend: ' + result?.enrichment?.screenshot?.backend"></p>
                         <p x-show="result?.enrichment?.screenshot?.reason" class="text-gray-400" x-text="result?.enrichment?.screenshot?.reason"></p>
@@ -262,6 +263,7 @@
                 loading: false,
                 error: null,
                 result: null,
+                screenshotLoading: false,
                 options: {
                     enrichDns: false,
                     enrichWhois: false,
@@ -279,6 +281,7 @@
                     this.loading = true;
                     this.error = null;
                     this.result = null;
+                    this.screenshotLoading = false;
 
                     const enrich = [];
                     if (this.options.enrichDns) enrich.push('dns');
@@ -304,10 +307,38 @@
                         }
 
                         this.result = data;
+
+                        if (this.options.enrichScreenshot && this.result) {
+                            this.fetchScreenshot();
+                        }
                     } catch (e) {
                         this.error = e?.message || 'Unexpected error';
                     } finally {
                         this.loading = false;
+                    }
+                },
+
+                async fetchScreenshot() {
+                    if (!this.result?.url) return;
+                    this.screenshotLoading = true;
+                    try {
+                        const response = await fetch('/api/screenshot-capture', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: this.result.url, timeout: 40 })
+                        });
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.detail || 'Screenshot failed');
+                        if (!this.result.enrichment) this.result.enrichment = {};
+                        this.result.enrichment.screenshot = data.screenshot || { reason: 'empty screenshot response' };
+                    } catch (e) {
+                        if (!this.result.enrichment) this.result.enrichment = {};
+                        this.result.enrichment.screenshot = {
+                            skipped: true,
+                            reason: e?.message || 'Screenshot request failed'
+                        };
+                    } finally {
+                        this.screenshotLoading = false;
                     }
                 },
 
