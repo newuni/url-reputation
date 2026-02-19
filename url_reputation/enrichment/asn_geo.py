@@ -333,7 +333,8 @@ def _ip_api_lookup(ip: str, *, timeout: int) -> tuple[dict[str, Any] | None, str
             "query",
         ]
     )
-    url = f"https://ip-api.com/json/{ip}?fields={fields}"
+    # ip-api free tier does not support HTTPS on this endpoint (returns 403 SSL unavailable).
+    url = f"http://ip-api.com/json/{ip}?fields={fields}"
 
     try:
         j = _http_get_json(url, timeout=timeout, user_agent="url-reputation/asn_geo(ip-api)")
