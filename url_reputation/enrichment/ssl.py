@@ -9,6 +9,7 @@ from __future__ import annotations
 import socket
 import ssl
 from datetime import datetime, timezone
+from fnmatch import fnmatch
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -52,8 +53,9 @@ class SslCertEnricher(Enricher):
 
         try:
             context = ssl.create_default_context()
+            # We still verify trust chain, but do hostname checks ourselves
+            # so we can report mismatch explicitly in enrichment output.
             context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
 
             with socket.create_connection((host, port), timeout=max(1, int(ctx.timeout))) as sock, context.wrap_socket(sock, server_hostname=host) as ssock:
                 cert = cast(dict[str, Any], ssock.getpeercert() or {})
@@ -86,11 +88,22 @@ class SslCertEnricher(Enricher):
                 expired = days_to_expiry < 0
 
             hostname_match = False
-            try:
-                ssl.match_hostname(cast(dict[str, Any], cert), host)
-                hostname_match = True
-            except Exception:
-                hostname_match = False
+            host_l = host.lower().strip('.')
+            for pattern in san:
+                pat = pattern.lower().strip('.')
+                if fnmatch(host_l, pat):
+                    hostname_match = True
+                    break
+            if not hostname_match:
+                try:
+                    # fallback to CN
+                    for rdn in subject_parts:
+                        for key, value in rdn:
+                            if key == "commonName" and fnmatch(host_l, str(value).lower().strip('.')):
+                                hostname_match = True
+                                break
+                except Exception:
+                    pass
 
             self_signed = bool(subject and issuer and subject == issuer)
 
