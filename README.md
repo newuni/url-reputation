@@ -153,16 +153,7 @@ curl -X POST http://localhost:8095/api/batch \
 }
 ```
 
-## Usage Examples
-
-### Explainable scoring (weights)
-
-You can tweak how much each provider/enrichment contributes:
-
-```bash
-export URL_REPUTATION_PROVIDER_WEIGHTS='{"phishtank": 1.0, "virustotal": 1.2, "redirects": 0.5, "whois": 1.0}'
-url-reputation "https://example.com" --enrich redirects,whois --json
-```
+## Basic Usage (normal)
 
 ### Check a clean URL
 
@@ -201,6 +192,26 @@ url-reputation "https://google.com" --format markdown
 
 # Batch (includes a summary at the end)
 url-reputation --file urls.txt --format markdown
+```
+
+### Risk scoring quick table
+
+| Score | Verdict | Meaning |
+|-------|---------|---------|
+| 0-20 | CLEAN | No threats detected |
+| 21-50 | LOW_RISK | Minor concerns, likely safe |
+| 51-75 | MEDIUM_RISK | Suspicious, investigate further |
+| 76-100 | HIGH_RISK | Likely malicious, avoid |
+
+## Advanced Usage
+
+### Explainable scoring (weights)
+
+You can tweak how much each provider/enrichment contributes:
+
+```bash
+export URL_REPUTATION_PROVIDER_WEIGHTS='{"phishtank": 1.0, "virustotal": 1.2, "redirects": 0.5, "whois": 1.0}'
+url-reputation "https://example.com" --enrich redirects,whois --json
 ```
 
 ### Profiles (developer-friendly presets)
@@ -577,15 +588,6 @@ These sources work without any API key:
 | OpenPhish | Phishing URLs | Hourly | [openphish.com](https://openphish.com/) |
 | DNSBL | Spam/malware domains | Real-time | [spamhaus.org](https://www.spamhaus.org/) / [surbl.org](https://surbl.org/) |
 | AlienVault OTX | Threat intel, pulses | Real-time | [otx.alienvault.com](https://otx.alienvault.com/) |
-
-## Risk Scoring
-
-| Score | Verdict | Meaning |
-|-------|---------|---------|
-| 0-20 | CLEAN | No threats detected |
-| 21-50 | LOW_RISK | Minor concerns, likely safe |
-| 51-75 | MEDIUM_RISK | Suspicious, investigate further |
-| 76-100 | HIGH_RISK | Likely malicious, avoid |
 
 ## Python API
 
