@@ -475,6 +475,40 @@ def aggregate_risk_score(
                     reason="TLS certificate hostname mismatch",
                     evidence={"hostname_match": False},
                 )
+            grade = ssl_data.get("grade")
+            grade_points = {"C": 5, "D": 15, "F": 25}.get(str(grade), 0)
+            if grade_points > 0:
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.tls.posture_grade",
+                    provider="tls",
+                    points=grade_points,
+                    weights=weights,
+                    reason=f"Weak TLS posture grade {grade}",
+                    evidence={"grade": grade},
+                )
+            legacy = ssl_data.get("legacy_protocols_enabled")
+            if isinstance(legacy, list) and legacy:
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.tls.legacy_protocols",
+                    provider="tls",
+                    points=10,
+                    weights=weights,
+                    reason="Legacy TLS protocols enabled",
+                    evidence={"legacy_protocols_enabled": legacy},
+                )
+            weak_cipher_protocols = ssl_data.get("weak_cipher_protocols")
+            if isinstance(weak_cipher_protocols, list) and weak_cipher_protocols:
+                _add_contribution(
+                    contribs,
+                    rule_id="enrichment.tls.weak_ciphers",
+                    provider="tls",
+                    points=10,
+                    weights=weights,
+                    reason="Weak TLS cipher negotiation detected",
+                    evidence={"weak_cipher_protocols": weak_cipher_protocols},
+                )
 
     # Deterministic ordering for explainability outputs.
     contribs_sorted = sorted(contribs, key=lambda c: (c.rule_id, c.provider, -c.weighted_points))

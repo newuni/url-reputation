@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 enrich_module = importlib.import_module("url_reputation.enrich")
 enrich = enrich_module.enrich
 enrich_dns = enrich_module.enrich_dns
+enrich_tls = enrich_module.enrich_tls
 enrich_whois = enrich_module.enrich_whois
 
 
@@ -105,6 +106,34 @@ Registrant Country: US
 
         self.assertIn("error", result)
         self.assertIn("not available", result["error"])
+
+
+class TestEnrichTLS(unittest.TestCase):
+    """Tests for TLS enrichment wrapper."""
+
+    @patch("url_reputation.enrichment.ssl.TlsEnricher")
+    @patch("url_reputation.enrichment.base.EnrichmentContext")
+    def test_enrich_tls_domain(self, mock_ctx, mock_enricher):
+        inst = mock_enricher.return_value
+        inst.enrich.return_value = {"grade": "A", "score": 100}
+
+        out = enrich_tls("example.com", timeout=3)
+
+        self.assertEqual(out["grade"], "A")
+        mock_ctx.assert_called_once()
+        mock_enricher.assert_called_once()
+        inst.enrich.assert_called_once()
+
+    @patch.object(enrich_module, "enrich_tls")
+    def test_enrich_with_tls_type(self, mock_tls):
+        mock_tls.return_value = {"grade": "D", "legacy_protocols_enabled": ["TLSv1.0"]}
+
+        out = enrich("example.com", types=["tls"])
+
+        self.assertIn("tls", out)
+        self.assertIn("risk_indicators", out)
+        self.assertTrue(any("Weak TLS posture" in i for i in out["risk_indicators"]))
+        self.assertTrue(any("Legacy TLS protocols enabled" in i for i in out["risk_indicators"]))
 
 
 class TestEnrich(unittest.TestCase):

@@ -604,6 +604,16 @@ def print_enrichment(enrichment: dict[str, Any]) -> None:
             print("  ⚠️ Self-signed certificate")
         if ssl_data.get("hostname_match") is False:
             print("  ⚠️ Hostname mismatch")
+        if ssl_data.get("grade"):
+            print(f"  Grade:    {ssl_data.get('grade')} ({ssl_data.get('score', '?')}/100)")
+        if ssl_data.get("supported_protocols"):
+            print(f"  Proto:    {', '.join(ssl_data.get('supported_protocols', []))}")
+        if ssl_data.get("legacy_protocols_enabled"):
+            print(f"  Legacy:   {', '.join(ssl_data.get('legacy_protocols_enabled', []))}")
+        if ssl_data.get("weak_cipher_protocols"):
+            print(
+                f"  WeakTLS:  {', '.join(ssl_data.get('weak_cipher_protocols', []))}"
+            )
 
     if "screenshot" in enrichment:
         shot = enrichment["screenshot"]

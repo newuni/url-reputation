@@ -90,6 +90,23 @@ class TestScoringExplainability(unittest.TestCase):
         )
         self.assertTrue(any("Very new domain" in r for r in agg.reasons))
 
+    def test_tls_posture_rules(self):
+        enrichment = {
+            "tls": {
+                "grade": "D",
+                "legacy_protocols_enabled": ["TLSv1.0"],
+                "weak_cipher_protocols": ["TLSv1.0"],
+            }
+        }
+
+        agg = aggregate_risk_score({}, enrichment=enrichment, provider_weights={"tls": 1.0})
+
+        self.assertGreaterEqual(agg.risk_score, 35)
+        rule_ids = [c["rule_id"] for c in agg.score_breakdown]
+        self.assertIn("enrichment.tls.posture_grade", rule_ids)
+        self.assertIn("enrichment.tls.legacy_protocols", rule_ids)
+        self.assertIn("enrichment.tls.weak_ciphers", rule_ids)
+
 
 class TestCheckerOutputExplainability(unittest.TestCase):
     def test_check_url_includes_breakdown_and_reasons(self):

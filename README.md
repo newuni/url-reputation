@@ -319,11 +319,14 @@ url-reputation --file urls.txt --format ndjson --preserve-order
 url-reputation "https://example.com" --sources urlhaus,dnsbl
 ```
 
-### DNS, Whois & ASN/Geo enrichment
+### DNS, Whois, ASN/Geo & TLS enrichment
 
 ```bash
 # Add DNS records and Whois info
 url-reputation "https://example.com" --enrich dns,whois
+
+# Add TLS posture analysis (protocol/cipher grading)
+url-reputation "https://example.com" --enrich tls
 
 # Add ASN + Geo (works best for domains/IPs)
 url-reputation "example.com" --enrich asn_geo
@@ -346,6 +349,10 @@ url-reputation "https://example.com" --enrich dns
   Created:   2001-01-01 (8500 days)
   Registrar: GoDaddy
   Country:   US
+
+🔐 TLS:
+  Grade:    A (95/100)
+  Proto:    TLSv1.2, TLSv1.3
 
 ⚠️ Risk Indicators:
   • No SPF record
@@ -730,11 +737,11 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 - [x] **HTML report** - `--format html` and `--report-html <path>`
 - [x] **SSL certificate check** - issuer/subject/SAN, expiry, hostname match, self-signed flags
 - [x] **More enrichment sources** - `screenshot` + `tls`/`tls_cert`
+- [x] **Stronger TLS posture analysis** - protocol/cipher grading
 
 ### 🧭 Next ideas
 
 - [ ] Configurable screenshot storage/retention policy
-- [ ] Stronger TLS posture analysis (protocol/cipher grading)
 - [ ] UI thumbnails for screenshots (not only artifact path)
 
 Contributions welcome! 🐙

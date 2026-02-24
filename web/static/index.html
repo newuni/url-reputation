@@ -69,7 +69,7 @@
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" x-model="options.enrichTls" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
-                        <span class="text-gray-300">TLS cert</span>
+                        <span class="text-gray-300">TLS posture</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" x-model="options.enrichScreenshot" class="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500">
@@ -194,20 +194,32 @@
                 </div>
 
                 <!-- TLS -->
-                <div x-show="result?.enrichment?.ssl" class="mb-4">
-                    <h4 class="text-md font-medium text-gray-300 mb-2">🔐 TLS Certificate</h4>
+                <div x-show="(result?.enrichment?.tls || result?.enrichment?.ssl)" class="mb-4">
+                    <h4 class="text-md font-medium text-gray-300 mb-2">🔐 TLS</h4>
                     <div class="bg-gray-700/50 rounded-lg p-4 font-mono text-sm space-y-2">
-                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.ssl?.issuer">
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="tlsData()?.issuer">
                             <span class="text-cyan-400 truncate">issuer:</span>
-                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.ssl?.issuer"></span>
+                            <span class="text-gray-300 break-all" x-text="tlsData()?.issuer"></span>
                         </div>
-                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.ssl?.not_after">
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="tlsData()?.not_after">
                             <span class="text-cyan-400 truncate">expires:</span>
-                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.ssl?.not_after"></span>
+                            <span class="text-gray-300 break-all" x-text="tlsData()?.not_after"></span>
                         </div>
-                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="result?.enrichment?.ssl?.days_to_expiry !== null">
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="tlsData()?.days_to_expiry !== null">
                             <span class="text-cyan-400 truncate">days left:</span>
-                            <span class="text-gray-300 break-all" x-text="result?.enrichment?.ssl?.days_to_expiry"></span>
+                            <span class="text-gray-300 break-all" x-text="tlsData()?.days_to_expiry"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="tlsData()?.grade">
+                            <span class="text-cyan-400 truncate">grade:</span>
+                            <span class="text-gray-300 break-all" x-text="tlsData()?.grade"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="tlsData()?.supported_protocols?.length">
+                            <span class="text-cyan-400 truncate">protocols:</span>
+                            <span class="text-gray-300 break-all" x-text="tlsData()?.supported_protocols?.join(', ')"></span>
+                        </div>
+                        <div class="grid grid-cols-[110px_1fr] md:grid-cols-[140px_1fr] gap-2" x-show="tlsData()?.legacy_protocols_enabled?.length">
+                            <span class="text-cyan-400 truncate">legacy:</span>
+                            <span class="text-gray-300 break-all" x-text="tlsData()?.legacy_protocols_enabled?.join(', ')"></span>
                         </div>
                     </div>
                 </div>
@@ -287,7 +299,7 @@
                     if (this.options.enrichDns) enrich.push('dns');
                     if (this.options.enrichWhois) enrich.push('whois');
                     if (this.options.enrichAsnGeo) enrich.push('asn_geo');
-                    if (this.options.enrichTls) enrich.push('ssl');
+                    if (this.options.enrichTls) enrich.push('tls');
                     if (this.options.enrichScreenshot) enrich.push('screenshot');
 
                     try {
@@ -441,6 +453,10 @@
                 screenshotUrl(path) {
                     if (!path) return '';
                     return `/api/screenshot?path=${encodeURIComponent(path)}`;
+                },
+
+                tlsData() {
+                    return this.result?.enrichment?.tls || this.result?.enrichment?.ssl || null;
                 },
 
                 exportHtml() {

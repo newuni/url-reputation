@@ -26,7 +26,7 @@ from url_reputation.scoring import aggregate_risk_score
 app = FastAPI(
     title="URL Reputation Checker",
     description="Multi-source URL/domain security analysis",
-    version="1.9.0",
+    version="1.10.0",
 )
 
 
@@ -34,7 +34,7 @@ class CheckRequest(BaseModel):
     url: str
     sources: Optional[list[str]] = None
     enrich: Optional[list[str]] = (
-        None  # ["dns", "whois", "asn_geo", "redirects", "ssl", "screenshot"]
+        None  # ["dns", "whois", "asn_geo", "redirects", "ssl", "tls", "screenshot"]
     )
     timeout: Optional[int] = 30
 

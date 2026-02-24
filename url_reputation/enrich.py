@@ -8,6 +8,7 @@ import socket
 import subprocess
 from datetime import datetime
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 
 def enrich_dns(domain: str, timeout: int = 10) -> dict[str, Any]:
@@ -213,13 +214,40 @@ def enrich_whois(domain: str, timeout: int = 10) -> dict:
     return result
 
 
+def enrich_tls(indicator: str, timeout: int = 10) -> dict[str, Any]:
+    """
+    Run TLS enrichment with protocol/cipher posture grading.
+
+    Uses the registered TLS enricher so CLI/API and legacy enrich() stay aligned.
+    """
+    from .enrichment.base import EnrichmentContext
+    from .enrichment.ssl import TlsEnricher
+
+    indicator_type = "domain"
+    if indicator.startswith(("http://", "https://")):
+        indicator_type = "url"
+    elif ":" in indicator and indicator.count(".") == 3:
+        indicator_type = "ip"
+
+    # Normalize URL/domain so host parsing in enricher is stable.
+    normalized = indicator
+    if indicator_type == "url":
+        parsed = urlparse(indicator)
+        normalized = parsed.geturl() if parsed.scheme else f"https://{indicator}"
+
+    return TlsEnricher().enrich(
+        normalized,
+        EnrichmentContext(timeout=timeout, indicator_type=indicator_type),
+    )
+
+
 def enrich(domain: str, types: Optional[list[str]] = None, timeout: int = 10) -> dict[str, Any]:
     """
     Run enrichment for specified types.
 
     Args:
         domain: Domain to enrich
-        types: List of enrichment types ('dns', 'whois'). Default: all
+        types: List of enrichment types ('dns', 'whois', 'tls'). Default: dns+whois
         timeout: Timeout per enrichment
 
     Returns:
@@ -236,6 +264,9 @@ def enrich(domain: str, types: Optional[list[str]] = None, timeout: int = 10) ->
 
     if "whois" in types_list:
         result["whois"] = enrich_whois(domain, timeout)
+
+    if "tls" in types_list:
+        result["tls"] = enrich_tls(domain, timeout)
 
     # Calculate risk indicators
     risk_indicators: list[str] = []
@@ -255,6 +286,14 @@ def enrich(domain: str, types: Optional[list[str]] = None, timeout: int = 10) ->
             risk_indicators.append("No MX records (no email capability)")
         if not dns.get("has_spf"):
             risk_indicators.append("No SPF record")
+
+    if "tls" in result:
+        tls = result["tls"]
+        if tls.get("grade") in ("C", "D", "F"):
+            risk_indicators.append(f"Weak TLS posture (grade {tls.get('grade')})")
+        legacy = tls.get("legacy_protocols_enabled")
+        if isinstance(legacy, list) and legacy:
+            risk_indicators.append(f"Legacy TLS protocols enabled: {', '.join(legacy)}")
 
     if risk_indicators:
         result["risk_indicators"] = risk_indicators
