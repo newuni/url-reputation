@@ -25,7 +25,7 @@
                     <label class="block text-sm font-medium text-gray-300 mb-2">Enter URL, domain or IP</label>
                     <div class="flex flex-col sm:flex-row gap-2">
                         <input
-                            type="url"
+                            type="text"
                             x-model="url"
                             placeholder="example.com or https://example.com"
                             inputmode="url"
@@ -303,7 +303,7 @@
                     if (this.options.enrichScreenshot) enrich.push('screenshot');
 
                     try {
-                        const response = await fetch('/api/check', {
+                        const response = await fetch('api/check', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -334,7 +334,7 @@
                     if (!this.result?.url) return;
                     this.screenshotLoading = true;
                     try {
-                        const response = await fetch('/api/screenshot-capture', {
+                        const response = await fetch('api/screenshot-capture', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ url: this.result.url, timeout: 40 })
@@ -452,7 +452,7 @@
 
                 screenshotUrl(path) {
                     if (!path) return '';
-                    return `/api/screenshot?path=${encodeURIComponent(path)}`;
+                    return `api/screenshot?path=${encodeURIComponent(path)}`;
                 },
 
                 tlsData() {

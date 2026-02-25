@@ -743,6 +743,11 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 
 - [ ] Configurable screenshot storage/retention policy
 - [ ] UI thumbnails for screenshots (not only artifact path)
+- [ ] Add `analysis_stats` summary (harmless/malicious/suspicious/undetected/timeout) similar to VT-style per-engine aggregation
+- [ ] Add URL canonicalization transparency in UI/API (show submitted value vs normalized canonical value)
+- [ ] Add optional relationship enrichment graph (redirect chain, final URL, outgoing links, related domains/IPs)
+- [ ] Expand provider adapters (e.g., Cisco Talos, Quad9, Cloudflare Gateway, OpenPhish premium, etc.) behind feature flags + per-provider rate-limit metadata
+- [ ] Add source confidence/freshness metadata (last-updated, cache age, provider latency) to help explain verdict quality
 
 Contributions welcome! 🐙
 
