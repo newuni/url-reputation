@@ -220,10 +220,10 @@ def enrich_tls(indicator: str, timeout: int = 10) -> dict[str, Any]:
 
     Uses the registered TLS enricher so CLI/API and legacy enrich() stay aligned.
     """
-    from .enrichment.base import EnrichmentContext
+    from .enrichment.base import EnrichmentContext, IndicatorType
     from .enrichment.ssl import TlsEnricher
 
-    indicator_type = "domain"
+    indicator_type: IndicatorType = "domain"
     if indicator.startswith(("http://", "https://")):
         indicator_type = "url"
     elif ":" in indicator and indicator.count(".") == 3:

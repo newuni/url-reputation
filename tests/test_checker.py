@@ -8,6 +8,7 @@ from unittest.mock import patch
 from url_reputation.checker import (
     ALL_SOURCES,
     FREE_SOURCES,
+    build_analysis_stats,
     calculate_risk_score,
     check_url_reputation,
     extract_domain,
@@ -193,6 +194,66 @@ class TestVerdictThresholds(unittest.TestCase):
         }
         score, verdict = calculate_risk_score(results)
         self.assertEqual(verdict, "HIGH_RISK")
+
+
+class TestAnalysisStats(unittest.TestCase):
+    def test_build_analysis_stats_prefers_explicit_counts(self):
+        stats = build_analysis_stats(
+            [
+                {
+                    "name": "virustotal",
+                    "status": "ok",
+                    "raw": {
+                        "malicious": 2,
+                        "suspicious": 1,
+                        "harmless": 30,
+                        "undetected": 37,
+                        "timeout": 0,
+                    },
+                }
+            ]
+        )
+
+        self.assertEqual(stats["malicious"], 2)
+        self.assertEqual(stats["suspicious"], 1)
+        self.assertEqual(stats["harmless"], 30)
+        self.assertEqual(stats["undetected"], 37)
+        self.assertEqual(stats["timeout"], 0)
+        self.assertEqual(stats["total"], 70)
+
+    def test_build_analysis_stats_uses_source_level_fallback(self):
+        stats = build_analysis_stats(
+            [
+                {"name": "urlhaus", "status": "ok", "listed": True, "raw": {"listed": True}},
+                {"name": "dnsbl", "status": "ok", "listed": False, "raw": {"listed": False}},
+                {"name": "urlscan", "status": "ok", "listed": None, "raw": {"malicious": False}},
+                {"name": "ipqs", "status": "ok", "listed": None, "raw": {"suspicious": True}},
+                {"name": "a", "status": "error", "error": "connection timeout", "raw": {}},
+                {"name": "b", "status": "error", "error": "429 rate limited", "raw": {}},
+            ]
+        )
+
+        self.assertEqual(stats["malicious"], 1)
+        self.assertEqual(stats["harmless"], 2)
+        self.assertEqual(stats["suspicious"], 1)
+        self.assertEqual(stats["timeout"], 1)
+        self.assertEqual(stats["undetected"], 1)
+        self.assertEqual(stats["total"], 6)
+
+    def test_check_url_reputation_includes_analysis_stats(self):
+        result = check_url_reputation("https://example.com", sources=[])
+        self.assertIn("analysis_stats", result)
+        self.assertEqual(result["analysis_stats"]["total"], 0)
+
+    def test_check_url_reputation_includes_canonicalization(self):
+        changed = check_url_reputation("Example.COM.", sources=[])
+        self.assertIn("canonicalization", changed)
+        self.assertEqual(changed["canonicalization"]["submitted"], "Example.COM.")
+        self.assertEqual(changed["canonicalization"]["canonical"], "example.com")
+        self.assertTrue(changed["canonicalization"]["changed"])
+
+        unchanged = check_url_reputation("example.com", sources=[])
+        self.assertFalse(unchanged["canonicalization"]["changed"])
 
 
 class TestCheckUrlReputation(unittest.TestCase):

@@ -9,6 +9,8 @@ Multi-source URL/domain security analysis with aggregated risk scoring.
 - **Parallel checking**: Fast concurrent checks across all sources
 - **Aggregated risk score**: 0-100 score with verdict (CLEAN, LOW_RISK, MEDIUM_RISK, HIGH_RISK)
 - **Explainable scoring**: `score_breakdown[]` + `reasons[]` (optional provider weights via `URL_REPUTATION_PROVIDER_WEIGHTS`)
+- **VT-style analysis summary**: `analysis_stats` (`harmless`, `malicious`, `suspicious`, `undetected`, `timeout`)
+- **Canonicalization transparency**: `canonicalization` with `submitted`, `canonical`, and `changed`
 - **Enrichment**: DNS/Whois + `asn_geo` (ASN + basic geo with quality report)
 
 ## Quick Start
@@ -126,10 +128,23 @@ curl -X POST http://localhost:8095/api/batch \
     "canonical": "https://example.com",
     "domain": "example.com"
   },
+  "canonicalization": {
+    "submitted": "https://EXAMPLE.com:443",
+    "canonical": "https://example.com",
+    "changed": true
+  },
   "verdict": "CLEAN",
   "risk_score": 0,
   "score_breakdown": [],
   "reasons": [],
+  "analysis_stats": {
+    "harmless": 1,
+    "malicious": 0,
+    "suspicious": 0,
+    "undetected": 0,
+    "timeout": 0,
+    "total": 1
+  },
   "checked_at": "2026-02-17T13:00:00.000000+00:00",
   "sources": [
     {
@@ -711,43 +726,26 @@ See detailed comparison: `docs/performance/provider_comparison.md`
 
 ## Roadmap
 
-### ✅ Recently completed
-
-- [x] **Test coverage & property-based tests** - pytest-cov, hypothesis
-- [x] **Integration test suite** - HTTP mocks, fixtures
-- [x] **Architecture Decision Records** - ADRs for key design decisions
-- [x] **Contributing guide** - CONTRIBUTING.md + issue templates
-- [x] **Benchmark suite** - pytest-benchmark with throughput/latency tests
-- [x] **Memory profiling** - scripts/profile_memory.py
-- [x] **Provider comparison** - docs/performance/provider_comparison.md
-- [x] **CI/CD** - GitHub Actions for tests, release, PyPI publish
-
-### ✅ Earlier completed
-
-- [x] **Config file** - `.env` support for API keys
-- [x] **Webhook notifications** - HMAC-signed webhooks on risk detection
-- [x] **DNS/Whois lookup** - `--enrich dns,whois` for domain intel
-- [x] **Docker web UI** - REST API + visual frontend with Docker Compose
-
-### ✅ F-block completed (v1.8.0)
-
-- [x] **Rich terminal output** - Colors/tables with Rich + plain fallback
-- [x] **Watch mode** - Periodic monitoring (`--watch 30s|5m|1h`) + `--watch-changes-only`
-- [x] **Quiet mode** - `--quiet` / `--alert-above` for scripting
-- [x] **HTML report** - `--format html` and `--report-html <path>`
-- [x] **SSL certificate check** - issuer/subject/SAN, expiry, hostname match, self-signed flags
-- [x] **More enrichment sources** - `screenshot` + `tls`/`tls_cert`
-- [x] **Stronger TLS posture analysis** - protocol/cipher grading
-
 ### 🧭 Next ideas
 
+**Low difficulty (do first)**
+
+- [x] Add `analysis_stats` summary (harmless/malicious/suspicious/undetected/timeout) similar to VT-style per-engine aggregation
+- [x] Add URL canonicalization transparency in UI/API (show submitted value vs normalized canonical value)
+
+**Medium difficulty**
+
 - [ ] Configurable screenshot storage/retention policy
-- [ ] UI thumbnails for screenshots (not only artifact path)
-- [ ] Add `analysis_stats` summary (harmless/malicious/suspicious/undetected/timeout) similar to VT-style per-engine aggregation
-- [ ] Add URL canonicalization transparency in UI/API (show submitted value vs normalized canonical value)
+- [ ] UI thumbnails and gallery mode for screenshots
+- [ ] Add source confidence/freshness metadata (last-updated, cache age, provider latency) to help explain verdict quality
+- [ ] Historical re-scan diff view (what changed since last check)
+- [ ] IOC export formats (`STIX 2.1`, CSV, JSONL) for SIEM/SOAR pipelines
+
+**High difficulty (later)**
+
 - [ ] Add optional relationship enrichment graph (redirect chain, final URL, outgoing links, related domains/IPs)
 - [ ] Expand provider adapters (e.g., Cisco Talos, Quad9, Cloudflare Gateway, OpenPhish premium, etc.) behind feature flags + per-provider rate-limit metadata
-- [ ] Add source confidence/freshness metadata (last-updated, cache age, provider latency) to help explain verdict quality
+- [ ] Optional browser-side JS challenge simulation for better phishing landing detection
 
 Contributions welcome! 🐙
 

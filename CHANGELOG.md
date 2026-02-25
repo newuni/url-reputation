@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [v1.10.0] - 2026-02-24
+### Added
+- Stronger TLS posture analysis in `tls` enrichment:
+  - Protocol probing (`TLSv1.0`, `TLSv1.1`, `TLSv1.2`, `TLSv1.3`)
+  - Cipher classification and negotiated cipher capture
+  - Posture grading (`A`-`F`) with assessment text
+  - Legacy protocol and weak-cipher indicators
+- Scoring contributions for weak TLS posture signals:
+  - `enrichment.tls.posture_grade`
+  - `enrichment.tls.legacy_protocols`
+  - `enrichment.tls.weak_ciphers`
+- Web UI support for TLS posture output (`grade`, protocols, legacy).
+
+### Changed
+- `--enrich tls` now surfaces protocol/cipher posture data in CLI and web output.
+- Legacy `enrich()` compatibility path now supports `tls` and emits risk indicators for weak posture.
+- Roadmap cleanup in README to keep only future-facing "Next ideas".
+
+### Fixed
+- Release docs consistency for `v1.10.0` (README + changelog alignment).
+
 ## [v1.9.0] - 2026-02-19
 ### Added
 - HN-ready web UX improvements for screenshot enrichment:
@@ -80,6 +101,7 @@ All notable changes to this project are documented here.
 ### Added
 - Initial release.
 
+[v1.10.0]: https://github.com/newuni/url-reputation/compare/v1.9.0...v1.10.0
 [v1.9.0]: https://github.com/newuni/url-reputation/compare/v1.8.0...v1.9.0
 [v1.8.0]: https://github.com/newuni/url-reputation/compare/v1.7.0...v1.8.0
 [v1.7.0]: https://github.com/newuni/url-reputation/compare/v1.6.0...v1.7.0

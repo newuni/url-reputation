@@ -6,6 +6,7 @@ risk indicators (expiry soon, expired, self-signed, hostname mismatch).
 
 from __future__ import annotations
 
+import contextlib
 import socket
 import ssl
 from datetime import datetime, timezone
@@ -78,24 +79,26 @@ def _probe_tls_version(host: str, port: int, version: object, timeout: int) -> d
         getattr(getattr(ssl, "TLSVersion", object), "TLSv1_1", None),
     }
     if version in legacy_versions:
-        try:
-            # Probe only: reduce OpenSSL policy to detect legacy support.
+        # Probe only: reduce OpenSSL policy to detect legacy support.
+        with contextlib.suppress(ssl.SSLError):
             context.set_ciphers("ALL:@SECLEVEL=0")
-        except ssl.SSLError:
-            pass
 
     try:
-        with socket.create_connection((host, port), timeout=timeout) as sock:
-            with context.wrap_socket(sock, server_hostname=host) as tls_sock:
-                cipher = tls_sock.cipher() or (None, None, None)
-                cipher_name, _, bits = cipher
-                return {
-                    "supported": True,
-                    "protocol": tls_sock.version(),
-                    "cipher": cipher_name,
-                    "cipher_bits": bits,
-                    "cipher_strength": _classify_cipher(cast(str | None, cipher_name)),
-                }
+        with (
+            socket.create_connection((host, port), timeout=timeout) as sock,
+            context.wrap_socket(sock, server_hostname=host) as tls_sock,
+        ):
+            cipher = tls_sock.cipher() or (None, None, None)
+            cipher_name, _, bits = cipher
+            return {
+                "supported": True,
+                "protocol": tls_sock.version(),
+                "cipher": cipher_name,
+                "cipher_bits": bits,
+                "cipher_strength": _classify_cipher(
+                    cipher_name if isinstance(cipher_name, str) else None
+                ),
+            }
     except ssl.SSLError as e:
         return {"supported": False, "error": f"SSL error: {str(e)}"}
     except socket.timeout:
@@ -123,9 +126,11 @@ def _grade_tls_posture(protocols: dict[str, dict[str, object]]) -> dict[str, obj
 
     for protocol in supported:
         entry = protocols.get(protocol, {})
-        strength = cast(str | None, entry.get("cipher_strength"))
+        strength_obj = entry.get("cipher_strength")
+        strength = strength_obj if isinstance(strength_obj, str) else None
         if not strength:
-            strength = _classify_cipher(cast(str | None, entry.get("cipher")))
+            cipher_obj = entry.get("cipher")
+            strength = _classify_cipher(cipher_obj if isinstance(cipher_obj, str) else None)
         if strength == "weak":
             weak_cipher_protocols.append(protocol)
         elif strength == "moderate":

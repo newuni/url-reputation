@@ -124,6 +124,57 @@
                         :style="'width: ' + (result?.risk_score ?? 0) + '%'"
                     ></div>
                 </div>
+
+                <div class="mt-4 bg-gray-700/40 rounded-lg border border-gray-700 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p class="text-xs uppercase tracking-wide text-gray-400">Canonicalization</p>
+                        <span
+                            class="px-2 py-0.5 rounded text-xs font-medium"
+                            :class="canonicalizationInfo().changed ? 'bg-blue-900/50 text-blue-300' : 'bg-gray-700 text-gray-300'"
+                            x-text="canonicalizationInfo().changed ? 'normalized' : 'unchanged'"
+                        ></span>
+                    </div>
+                    <div class="grid gap-1 text-xs md:text-sm">
+                        <p class="text-gray-300 break-all">
+                            <span class="text-gray-500">submitted:</span>
+                            <span class="font-mono" x-text="canonicalizationInfo().submitted"></span>
+                        </p>
+                        <p class="text-gray-300 break-all">
+                            <span class="text-gray-500">canonical:</span>
+                            <span class="font-mono" x-text="canonicalizationInfo().canonical"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Stats -->
+            <div class="bg-gray-800 rounded-lg p-4 md:p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-white">🧪 Analysis Stats</h3>
+                    <p class="text-xs text-gray-400" x-text="analysisStatsSummary()"></p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="bg-green-900/30 border border-green-800/60 rounded-lg px-3 py-2">
+                        <p class="text-[11px] uppercase tracking-wide text-green-300">Harmless</p>
+                        <p class="text-xl font-semibold text-green-200" x-text="analysisStats().harmless"></p>
+                    </div>
+                    <div class="bg-red-900/30 border border-red-800/60 rounded-lg px-3 py-2">
+                        <p class="text-[11px] uppercase tracking-wide text-red-300">Malicious</p>
+                        <p class="text-xl font-semibold text-red-200" x-text="analysisStats().malicious"></p>
+                    </div>
+                    <div class="bg-amber-900/30 border border-amber-800/60 rounded-lg px-3 py-2">
+                        <p class="text-[11px] uppercase tracking-wide text-amber-300">Suspicious</p>
+                        <p class="text-xl font-semibold text-amber-200" x-text="analysisStats().suspicious"></p>
+                    </div>
+                    <div class="bg-gray-700/60 border border-gray-600 rounded-lg px-3 py-2">
+                        <p class="text-[11px] uppercase tracking-wide text-gray-300">Undetected</p>
+                        <p class="text-xl font-semibold text-gray-200" x-text="analysisStats().undetected"></p>
+                    </div>
+                    <div class="bg-cyan-900/30 border border-cyan-800/60 rounded-lg px-3 py-2">
+                        <p class="text-[11px] uppercase tracking-wide text-cyan-300">Timeout</p>
+                        <p class="text-xl font-semibold text-cyan-200" x-text="analysisStats().timeout"></p>
+                    </div>
+                </div>
             </div>
 
             <!-- Sources -->
@@ -362,6 +413,24 @@
                     return this.result?.indicator?.domain || this.result?.domain || '—';
                 },
 
+                canonicalizationInfo() {
+                    const c = this.result?.canonicalization;
+                    if (c && typeof c === 'object') {
+                        const submitted = String(c.submitted ?? this.result?.indicator?.input ?? this.result?.url ?? '—');
+                        const canonical = String(c.canonical ?? this.result?.indicator?.canonical ?? submitted);
+                        const changed = typeof c.changed === 'boolean' ? c.changed : (submitted !== canonical);
+                        return { submitted, canonical, changed };
+                    }
+
+                    const submitted = String(this.result?.indicator?.input ?? this.result?.url ?? '—');
+                    const canonical = String(this.result?.indicator?.canonical ?? submitted);
+                    return {
+                        submitted,
+                        canonical,
+                        changed: submitted !== canonical
+                    };
+                },
+
                 formatVerdict(verdict) {
                     return (verdict || 'UNKNOWN').replaceAll('_', ' ');
                 },
@@ -398,6 +467,46 @@
                     }
 
                     return [];
+                },
+
+                analysisStats() {
+                    const incoming = this.result?.analysis_stats;
+                    if (incoming && typeof incoming === 'object') {
+                        const stats = {
+                            harmless: Number(incoming.harmless) || 0,
+                            malicious: Number(incoming.malicious) || 0,
+                            suspicious: Number(incoming.suspicious) || 0,
+                            undetected: Number(incoming.undetected) || 0,
+                            timeout: Number(incoming.timeout) || 0
+                        };
+                        const total = Number(incoming.total);
+                        stats.total = Number.isFinite(total)
+                            ? total
+                            : stats.harmless + stats.malicious + stats.suspicious + stats.undetected + stats.timeout;
+                        return stats;
+                    }
+
+                    // Backward compatibility for older API responses without analysis_stats.
+                    const derived = { harmless: 0, malicious: 0, suspicious: 0, undetected: 0, timeout: 0, total: 0 };
+                    for (const src of this.normalizedSources()) {
+                        if (src.status === 'error') {
+                            if (/(timeout|timed out|time out)/i.test(src.error || '')) derived.timeout++;
+                            else derived.undetected++;
+                        } else if (src.listed === true) {
+                            derived.malicious++;
+                        } else if (src.listed === false) {
+                            derived.harmless++;
+                        } else {
+                            derived.undetected++;
+                        }
+                    }
+                    derived.total = derived.harmless + derived.malicious + derived.suspicious + derived.undetected + derived.timeout;
+                    return derived;
+                },
+
+                analysisStatsSummary() {
+                    const stats = this.analysisStats();
+                    return `${stats.total} total signals`;
                 },
 
                 sourceSummary() {

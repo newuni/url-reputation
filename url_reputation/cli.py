@@ -611,9 +611,7 @@ def print_enrichment(enrichment: dict[str, Any]) -> None:
         if ssl_data.get("legacy_protocols_enabled"):
             print(f"  Legacy:   {', '.join(ssl_data.get('legacy_protocols_enabled', []))}")
         if ssl_data.get("weak_cipher_protocols"):
-            print(
-                f"  WeakTLS:  {', '.join(ssl_data.get('weak_cipher_protocols', []))}"
-            )
+            print(f"  WeakTLS:  {', '.join(ssl_data.get('weak_cipher_protocols', []))}")
 
     if "screenshot" in enrichment:
         shot = enrichment["screenshot"]

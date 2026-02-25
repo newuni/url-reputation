@@ -77,6 +77,8 @@ THREAT_WEIGHTS = {
     "unknown": 10,
 }
 
+ANALYSIS_CATEGORIES = ("harmless", "malicious", "suspicious", "undetected", "timeout")
+
 
 def canonicalize_indicator(value: str) -> IndicatorV1:
     """Canonicalization and indicator typing (T9).
@@ -93,6 +95,37 @@ def canonicalize_indicator(value: str) -> IndicatorV1:
         canonical=n.canonical,
         domain=n.domain,
     )
+
+
+def build_canonicalization_meta(indicator: IndicatorV1) -> dict[str, Any]:
+    submitted = str(indicator.input)
+    canonical = str(indicator.canonical)
+    return {
+        "submitted": submitted,
+        "canonical": canonical,
+        "changed": submitted != canonical,
+    }
+
+
+def _canonicalization_from_cached_result(cached: dict[str, Any]) -> dict[str, Any]:
+    indicator = cached.get("indicator")
+    indicator_dict = indicator if isinstance(indicator, dict) else {}
+
+    submitted_value = indicator_dict.get("input")
+    if submitted_value is None:
+        submitted_value = cached.get("url", "")
+    submitted = str(submitted_value)
+
+    canonical_value = indicator_dict.get("canonical")
+    if canonical_value is None:
+        canonical_value = submitted_value if submitted_value is not None else ""
+    canonical = str(canonical_value)
+
+    return {
+        "submitted": submitted,
+        "canonical": canonical,
+        "changed": submitted != canonical,
+    }
 
 
 def extract_domain(url: str) -> str:
@@ -117,6 +150,127 @@ def calculate_risk_score(results: dict) -> tuple[int, str]:
 
     agg = aggregate_risk_score(results)
     return agg.risk_score, agg.verdict
+
+
+def _blank_analysis_stats() -> dict[str, int]:
+    return {
+        "harmless": 0,
+        "malicious": 0,
+        "suspicious": 0,
+        "undetected": 0,
+        "timeout": 0,
+        "total": 0,
+    }
+
+
+def _to_non_negative_int(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            i = int(value)
+        except Exception:
+            return None
+        return max(0, i)
+    return None
+
+
+def _is_timeout_error(message: str | None) -> bool:
+    if not message:
+        return False
+    text = message.lower()
+    return any(token in text for token in ("timeout", "timed out", "time out"))
+
+
+def _extract_explicit_analysis_counts(raw: dict[str, Any]) -> dict[str, int] | None:
+    # Prefer explicit VT-style bucket counts when present.
+    stats = {k: _to_non_negative_int(raw.get(k)) for k in ANALYSIS_CATEGORIES}
+    if any(v is not None for v in stats.values()):
+        return {k: int(v or 0) for k, v in stats.items()}
+
+    detected = _to_non_negative_int(raw.get("detected"))
+    total = _to_non_negative_int(raw.get("total"))
+    if detected is not None and total is not None:
+        return {
+            "harmless": 0,
+            "malicious": detected,
+            "suspicious": 0,
+            "undetected": max(0, total - detected),
+            "timeout": 0,
+        }
+
+    return None
+
+
+def _source_bucket(source: dict[str, Any]) -> str:
+    status = str(source.get("status") or "ok")
+    error = str(source.get("error") or "")
+    raw_value = source.get("raw")
+    raw: dict[str, Any] = raw_value if isinstance(raw_value, dict) else {}
+    listed = source.get("listed")
+
+    if status == "error":
+        return "timeout" if _is_timeout_error(error) else "undetected"
+
+    if listed is True:
+        return "malicious"
+    if listed is False:
+        return "harmless"
+
+    if bool(raw.get("malicious")) or bool(raw.get("phishing")) or bool(raw.get("malware")):
+        return "malicious"
+    if bool(raw.get("unsafe")):
+        return "malicious"
+    if bool(raw.get("suspicious")):
+        return "suspicious"
+
+    flag_values: dict[str, bool] = {}
+    for key in ("malicious", "phishing", "malware", "unsafe", "suspicious"):
+        value = raw.get(key)
+        if isinstance(value, bool):
+            flag_values[key] = value
+    if flag_values and not any(flag_values.values()):
+        return "harmless"
+
+    threats = raw.get("threats")
+    if isinstance(threats, list):
+        return "malicious" if threats else "harmless"
+
+    pulse_count = _to_non_negative_int(raw.get("pulse_count"))
+    if pulse_count is not None:
+        return "suspicious" if pulse_count > 0 else "harmless"
+
+    detected = _to_non_negative_int(raw.get("detected"))
+    total = _to_non_negative_int(raw.get("total"))
+    if detected is not None and total is not None:
+        if detected > 0:
+            return "malicious"
+        if total > 0:
+            return "harmless"
+        return "undetected"
+
+    if raw.get("submitted") is True:
+        return "undetected"
+
+    return "undetected"
+
+
+def build_analysis_stats(sources: list[dict[str, Any]]) -> dict[str, int]:
+    stats = _blank_analysis_stats()
+    for source in sources:
+        raw_value = source.get("raw")
+        raw: dict[str, Any] = raw_value if isinstance(raw_value, dict) else {}
+        explicit = _extract_explicit_analysis_counts(raw)
+        if explicit:
+            for key in ANALYSIS_CATEGORIES:
+                stats[key] += explicit[key]
+            continue
+
+        bucket = _source_bucket(source)
+        stats[bucket] += 1
+
+    stats["total"] = sum(stats[k] for k in ANALYSIS_CATEGORIES)
+    return stats
 
 
 def check_url_reputation(
@@ -161,6 +315,11 @@ def check_url_reputation(
             # Additive fields introduced in newer schema v1 revisions (T19).
             cached.setdefault("score_breakdown", [])
             cached.setdefault("reasons", [])
+            if "analysis_stats" not in cached:
+                cached["analysis_stats"] = build_analysis_stats(
+                    list(cast(list[dict[str, Any]], cached.get("sources") or []))
+                )
+            cached.setdefault("canonicalization", _canonicalization_from_cached_result(cached))
             return cached
 
     results_map: dict[str, dict[str, Any]] = {}
@@ -296,6 +455,8 @@ def check_url_reputation(
     # Additive explainability fields (T19).
     out["score_breakdown"] = agg.score_breakdown
     out["reasons"] = agg.reasons
+    out["analysis_stats"] = build_analysis_stats(list(cast(list[dict[str, Any]], out["sources"])))
+    out["canonicalization"] = build_canonicalization_meta(indicator)
 
     if cache and cache_key:
         cache.set(cache_key, out)
